@@ -31,6 +31,8 @@ IDT_C_SRC = $(KERNEL_DIR)/idt.c
 KEYBOARD_C_SRC = $(KERNEL_DIR)/keyboard.c
 TIMER_C_SRC = $(KERNEL_DIR)/timer.c
 MEMORY_C_SRC = $(KERNEL_DIR)/memory.c
+PMM_C_SRC = $(KERNEL_DIR)/pmm.c
+HEAP_C_SRC = $(KERNEL_DIR)/heap.c
 
 # Object files
 KERNEL_ENTRY_OBJ = $(BUILD_DIR)/kernel_entry.o
@@ -41,10 +43,13 @@ IDT_OBJ = $(BUILD_DIR)/idt_c.o
 KEYBOARD_OBJ = $(BUILD_DIR)/keyboard.o
 TIMER_OBJ = $(BUILD_DIR)/timer.o
 MEMORY_OBJ = $(BUILD_DIR)/memory.o
+PMM_OBJ = $(BUILD_DIR)/pmm.o
+HEAP_OBJ = $(BUILD_DIR)/heap.o
 
 # All object files
 OBJS = $(KERNEL_ENTRY_OBJ) $(KERNEL_OBJ) $(IDT_ASM_OBJ) $(ISR_ASM_OBJ) \
-       $(IDT_OBJ) $(KEYBOARD_OBJ) $(TIMER_OBJ) $(MEMORY_OBJ)
+       $(IDT_OBJ) $(KEYBOARD_OBJ) $(TIMER_OBJ) $(MEMORY_OBJ) \
+       $(PMM_OBJ) $(HEAP_OBJ)
 
 # Default target
 all: $(OS_IMAGE)
@@ -98,6 +103,16 @@ $(MEMORY_OBJ): $(MEMORY_C_SRC) | $(BUILD_DIR)
 	@echo "Building memory manager..."
 	$(CC) $(CC_FLAGS) $(MEMORY_C_SRC) -o $(MEMORY_OBJ)
 
+# Build PMM C code
+$(PMM_OBJ): $(PMM_C_SRC) | $(BUILD_DIR)
+	@echo "Building physical memory manager..."
+	$(CC) $(CC_FLAGS) $(PMM_C_SRC) -o $(PMM_OBJ)
+
+# Build heap C code
+$(HEAP_OBJ): $(HEAP_C_SRC) | $(BUILD_DIR)
+	@echo "Building heap allocator..."
+	$(CC) $(CC_FLAGS) $(HEAP_C_SRC) -o $(HEAP_OBJ)
+
 # Link kernel
 $(KERNEL_BIN): $(OBJS) | $(BUILD_DIR)
 	@echo "Linking kernel..."
@@ -108,28 +123,32 @@ $(OS_IMAGE): $(BOOT_BIN) $(KERNEL_BIN)
 	@echo "Creating OS image..."
 	cat $(BOOT_BIN) $(KERNEL_BIN) > $(OS_IMAGE)
 	@echo ""
-	@echo "=========================================="
-	@echo "  SUB OS v0.3.0 Build Complete!"
-	@echo "=========================================="
+	@echo "==========================================="
+	@echo "  SUB OS v0.4.0 Build Complete!"
+	@echo "==========================================="
 	@echo "Image: $(OS_IMAGE)"
 	@echo "Size: $$(stat -f%z $(OS_IMAGE) 2>/dev/null || stat -c%s $(OS_IMAGE)) bytes"
 	@echo ""
+	@echo "New Features:"
+	@echo "  - Physical Memory Manager"
+	@echo "  - Heap Allocator (kmalloc/kfree)"
+	@echo ""
 	@echo "Run with: make run"
-	@echo "=========================================="
+	@echo "==========================================="
 
 # Run in QEMU
 run: $(OS_IMAGE)
 	@echo ""
-	@echo "Starting SUB OS v0.3.0..."
+	@echo "Starting SUB OS v0.4.0..."
 	@echo ""
-	qemu-system-i386 -drive format=raw,file=$(OS_IMAGE)
+	qemu-system-i386 -drive format=raw,file=$(OS_IMAGE) -m 128M
 
 # Run with serial output for debugging
 debug: $(OS_IMAGE)
 	@echo ""
-	@echo "Starting SUB OS v0.3.0 (Debug Mode)..."
+	@echo "Starting SUB OS v0.4.0 (Debug Mode)..."
 	@echo ""
-	qemu-system-i386 -drive format=raw,file=$(OS_IMAGE) -serial stdio
+	qemu-system-i386 -drive format=raw,file=$(OS_IMAGE) -m 128M -serial stdio
 
 # Clean build files
 clean:
@@ -138,11 +157,11 @@ clean:
 
 # Display help
 help:
-	@echo "SUB OS Build System"
+	@echo "SUB OS Build System - v0.4.0"
 	@echo ""
 	@echo "Targets:"
 	@echo "  make         - Build SUB OS"
-	@echo "  make run     - Build and run in QEMU"
+	@echo "  make run     - Build and run in QEMU (128MB RAM)"
 	@echo "  make debug   - Build and run with debug output"
 	@echo "  make clean   - Remove build files"
 	@echo "  make help    - Show this help"
