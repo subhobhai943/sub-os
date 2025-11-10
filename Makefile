@@ -23,6 +23,8 @@ IDT_ASM_SRC = $(KERNEL_DIR)/idt.asm
 ISR_ASM_SRC = $(KERNEL_DIR)/isr.asm
 TASK_SWITCH_SRC = $(KERNEL_DIR)/task_switch.asm
 SYSCALL_ENTRY_SRC = $(KERNEL_DIR)/syscall_entry.asm
+TSS_ASM_SRC = $(KERNEL_DIR)/tss.asm
+USERMODE_ASM_SRC = $(KERNEL_DIR)/usermode.asm
 IDT_C_SRC = $(KERNEL_DIR)/idt.c
 KEYBOARD_C_SRC = $(KERNEL_DIR)/keyboard.c
 TIMER_C_SRC = $(KERNEL_DIR)/timer.c
@@ -33,6 +35,7 @@ PAGING_C_SRC = $(KERNEL_DIR)/paging.c
 PROCESS_C_SRC = $(KERNEL_DIR)/process.c
 SCHEDULER_C_SRC = $(KERNEL_DIR)/scheduler.c
 SYSCALL_C_SRC = $(KERNEL_DIR)/syscall.c
+TSS_C_SRC = $(KERNEL_DIR)/tss.c
 
 KERNEL_ENTRY_OBJ = $(BUILD_DIR)/kernel_entry.o
 KERNEL_OBJ = $(BUILD_DIR)/kernel.o
@@ -40,6 +43,8 @@ IDT_ASM_OBJ = $(BUILD_DIR)/idt.o
 ISR_ASM_OBJ = $(BUILD_DIR)/isr.o
 TASK_SWITCH_OBJ = $(BUILD_DIR)/task_switch.o
 SYSCALL_ENTRY_OBJ = $(BUILD_DIR)/syscall_entry.o
+TSS_ASM_OBJ = $(BUILD_DIR)/tss_asm.o
+USERMODE_ASM_OBJ = $(BUILD_DIR)/usermode.o
 IDT_OBJ = $(BUILD_DIR)/idt_c.o
 KEYBOARD_OBJ = $(BUILD_DIR)/keyboard.o
 TIMER_OBJ = $(BUILD_DIR)/timer.o
@@ -50,11 +55,13 @@ PAGING_OBJ = $(BUILD_DIR)/paging.o
 PROCESS_OBJ = $(BUILD_DIR)/process.o
 SCHEDULER_OBJ = $(BUILD_DIR)/scheduler.o
 SYSCALL_OBJ = $(BUILD_DIR)/syscall.o
+TSS_OBJ = $(BUILD_DIR)/tss.o
 
 OBJS = $(KERNEL_ENTRY_OBJ) $(KERNEL_OBJ) $(IDT_ASM_OBJ) $(ISR_ASM_OBJ) \
-       $(TASK_SWITCH_OBJ) $(SYSCALL_ENTRY_OBJ) $(IDT_OBJ) $(KEYBOARD_OBJ) \
-       $(TIMER_OBJ) $(MEMORY_OBJ) $(PMM_OBJ) $(HEAP_OBJ) $(PAGING_OBJ) \
-       $(PROCESS_OBJ) $(SCHEDULER_OBJ) $(SYSCALL_OBJ)
+       $(TASK_SWITCH_OBJ) $(SYSCALL_ENTRY_OBJ) $(TSS_ASM_OBJ) $(USERMODE_ASM_OBJ) \
+       $(IDT_OBJ) $(KEYBOARD_OBJ) $(TIMER_OBJ) $(MEMORY_OBJ) $(PMM_OBJ) \
+       $(HEAP_OBJ) $(PAGING_OBJ) $(PROCESS_OBJ) $(SCHEDULER_OBJ) \
+       $(SYSCALL_OBJ) $(TSS_OBJ)
 
 all: $(OS_IMAGE)
 
@@ -84,6 +91,14 @@ $(TASK_SWITCH_OBJ): $(TASK_SWITCH_SRC) | $(BUILD_DIR)
 $(SYSCALL_ENTRY_OBJ): $(SYSCALL_ENTRY_SRC) | $(BUILD_DIR)
 	@echo "Building syscall entry..."
 	$(ASM) $(ASM_FLAGS) $(SYSCALL_ENTRY_SRC) -o $(SYSCALL_ENTRY_OBJ)
+
+$(TSS_ASM_OBJ): $(TSS_ASM_SRC) | $(BUILD_DIR)
+	@echo "Building TSS assembly..."
+	$(ASM) $(ASM_FLAGS) $(TSS_ASM_SRC) -o $(TSS_ASM_OBJ)
+
+$(USERMODE_ASM_OBJ): $(USERMODE_ASM_SRC) | $(BUILD_DIR)
+	@echo "Building usermode entry..."
+	$(ASM) $(ASM_FLAGS) $(USERMODE_ASM_SRC) -o $(USERMODE_ASM_OBJ)
 
 $(KERNEL_OBJ): $(KERNEL_C_SRC) | $(BUILD_DIR)
 	@echo "Building kernel..."
@@ -129,6 +144,10 @@ $(SYSCALL_OBJ): $(SYSCALL_C_SRC) | $(BUILD_DIR)
 	@echo "Building system calls..."
 	$(CC) $(CC_FLAGS) $(SYSCALL_C_SRC) -o $(SYSCALL_OBJ)
 
+$(TSS_OBJ): $(TSS_C_SRC) | $(BUILD_DIR)
+	@echo "Building TSS..."
+	$(CC) $(CC_FLAGS) $(TSS_C_SRC) -o $(TSS_OBJ)
+
 $(KERNEL_BIN): $(OBJS) | $(BUILD_DIR)
 	@echo "Linking kernel..."
 	$(LD) $(LD_FLAGS) -o $(KERNEL_BIN) $(OBJS)
@@ -138,29 +157,31 @@ $(OS_IMAGE): $(BOOT_BIN) $(KERNEL_BIN)
 	cat $(BOOT_BIN) $(KERNEL_BIN) > $(OS_IMAGE)
 	@echo ""
 	@echo "==========================================="
-	@echo "  SUB OS v0.7.0 Build Complete!"
+	@echo "  SUB OS v0.8.0 Build Complete!"
 	@echo "==========================================="
 	@echo "Image: $(OS_IMAGE)"
 	@echo "Size: $$(stat -f%z $(OS_IMAGE) 2>/dev/null || stat -c%s $(OS_IMAGE)) bytes"
 	@echo ""
-	@echo "New Features:"
-	@echo "  - System Calls (INT 0x80)"
-	@echo "  - User/Kernel Interface"
-	@echo "  - 9 Syscalls Implemented"
+	@echo "Day 8 Features:"
+	@echo "  - User Mode (Ring 3)"
+	@echo "  - Task State Segment (TSS)"
+	@echo "  - Privilege Transitions"
+	@echo "  - User Mode Syscalls"
 	@echo ""
+	@echo "Total: 26 major systems"
 	@echo "Run with: make run"
 	@echo "==========================================="
 
 run: $(OS_IMAGE)
 	@echo ""
-	@echo "Starting SUB OS v0.7.0..."
-	@echo "System calls enabled!"
+	@echo "Starting SUB OS v0.8.0..."
+	@echo "User mode enabled!"
 	@echo ""
 	qemu-system-i386 -drive format=raw,file=$(OS_IMAGE) -m 128M
 
 debug: $(OS_IMAGE)
 	@echo ""
-	@echo "Starting SUB OS v0.7.0 (Debug Mode)..."
+	@echo "Starting SUB OS v0.8.0 (Debug Mode)..."
 	@echo ""
 	qemu-system-i386 -drive format=raw,file=$(OS_IMAGE) -m 128M -serial stdio
 
@@ -169,7 +190,7 @@ clean:
 	@echo "Build directory cleaned"
 
 help:
-	@echo "SUB OS Build System - v0.7.0"
+	@echo "SUB OS Build System - v0.8.0"
 	@echo ""
 	@echo "Targets:"
 	@echo "  make         - Build SUB OS"
