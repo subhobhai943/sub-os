@@ -14,6 +14,9 @@ KERNEL_OFFSET equ 0x1000    ; Memory offset where kernel will be loaded
     mov bx, MSG_REAL_MODE
     call print_string
     
+    ; Detect memory
+    call detect_memory
+    
     ; Load kernel from disk
     call load_kernel
     
@@ -24,6 +27,7 @@ KERNEL_OFFSET equ 0x1000    ; Memory offset where kernel will be loaded
 
 %include "boot/print_string.asm"
 %include "boot/disk_load.asm"
+%include "boot/memory_detect.asm"
 %include "boot/gdt.asm"
 %include "boot/print_string_pm.asm"
 %include "boot/switch_to_pm.asm"
@@ -34,7 +38,7 @@ load_kernel:
     call print_string
     
     mov bx, KERNEL_OFFSET   ; Read from disk and store in 0x1000
-    mov dh, 15              ; Read 15 sectors (adjust based on kernel size)
+    mov dh, 20              ; Read 20 sectors (increased for larger kernel)
     mov dl, [BOOT_DRIVE]
     call disk_load
     ret
