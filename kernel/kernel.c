@@ -10,6 +10,7 @@
 #include "heap.h"
 #include "paging.h"
 #include "process.h"
+#include "syscall.h"
 
 #define VIDEO_MEMORY 0xb8000
 #define MAX_ROWS 25
@@ -116,7 +117,6 @@ void print_dec(unsigned int num) {
 void irq_handler(unsigned int irq_no, unsigned int err_code) {
     if (irq_no == 32) {
         timer_handler();
-        // Schedule every 50ms (5 ticks at 100Hz)
         if (timer_get_ticks() % 5 == 0) {
             schedule();
         }
@@ -130,17 +130,43 @@ void irq_handler(unsigned int irq_no, unsigned int err_code) {
     outb(0x20, 0x20);
 }
 
-// Test process functions
+void test_syscall() {
+    int pid, result;
+    
+    // Test getpid
+    asm volatile("mov $6, %%eax; int $0x80" : "=a"(pid));
+    print_string("  [TEST] getpid() = ");
+    print_dec(pid);
+    print_string("\n");
+    
+    // Test write
+    const char* msg = "Hello from syscall!\n";
+    asm volatile(
+        "mov $3, %%eax;"
+        "mov $1, %%ebx;"
+        "mov %1, %%ecx;"
+        "mov $20, %%edx;"
+        "int $0x80"
+        : "=a"(result)
+        : "r"(msg)
+        : "ebx", "ecx", "edx"
+    );
+    
+    // Test yield
+    asm volatile("mov $8, %%eax; int $0x80" : "=a"(result));
+    print_string("  [TEST] yield() = ");
+    print_dec(result);
+    print_string("\n");
+}
+
 void test_process_1() {
     while(1) {
-        // Process 1 work
         asm volatile("hlt");
     }
 }
 
 void test_process_2() {
     while(1) {
-        // Process 2 work
         asm volatile("hlt");
     }
 }
@@ -148,7 +174,7 @@ void test_process_2() {
 void main() {
     clear_screen();
     print_string("========================================\n");
-    print_string("     SUB OS - Alpha v0.6.0              \n");
+    print_string("     SUB OS - Alpha v0.7.0              \n");
     print_string("     Built from Scratch                 \n");
     print_string("========================================\n\n");
     print_string("[OK] Bootloader initialized\n");
@@ -171,9 +197,10 @@ void main() {
     print_string("\n");
     scheduler_init();
     print_string("\n");
+    syscall_init();
+    print_string("\n");
     keyboard_init();
     
-    // Create test processes
     print_string("\nCreating test processes...\n");
     process_t* proc1 = process_create("test1", test_process_1);
     if (proc1) {
@@ -200,7 +227,8 @@ void main() {
     print_string("  * Virtual Memory (Paging)\n");
     print_string("  * Heap Allocator (kmalloc/kfree)\n");
     print_string("  * Process Management (PCB)\n");
-    print_string("  * Round-Robin Scheduler\n\n");
+    print_string("  * Round-Robin Scheduler\n");
+    print_string("  * System Calls (INT 0x80)\n\n");
     
     print_string("System Status: RUNNING\n");
     print_string("Architecture: x86\n");
@@ -217,7 +245,10 @@ void main() {
     
     asm volatile("sti");
     
-    print_string("\nMultitasking enabled! Scheduler active.\n");
+    print_string("\nTesting system calls...\n");
+    test_syscall();
+    
+    print_string("\nMultitasking enabled! System calls active.\n");
     print_string("Type something...\n");
     print_string("> ");
     

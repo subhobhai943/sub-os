@@ -8,6 +8,7 @@
 extern void idt_load();
 extern void idt_set_gate(unsigned char num, unsigned long base, unsigned short sel, unsigned char flags);
 
+// External ISR handlers
 extern void isr0(); extern void isr1(); extern void isr2(); extern void isr3();
 extern void isr4(); extern void isr5(); extern void isr6(); extern void isr7();
 extern void isr8(); extern void isr9(); extern void isr10(); extern void isr11();
@@ -17,10 +18,14 @@ extern void isr20(); extern void isr21(); extern void isr22(); extern void isr23
 extern void isr24(); extern void isr25(); extern void isr26(); extern void isr27();
 extern void isr28(); extern void isr29(); extern void isr30(); extern void isr31();
 
+// External IRQ handlers
 extern void irq0(); extern void irq1(); extern void irq2(); extern void irq3();
 extern void irq4(); extern void irq5(); extern void irq6(); extern void irq7();
 extern void irq8(); extern void irq9(); extern void irq10(); extern void irq11();
 extern void irq12(); extern void irq13(); extern void irq14(); extern void irq15();
+
+// System call handler
+extern void syscall_entry();
 
 const char* exception_messages[] = {
     "Division By Zero", "Debug", "Non Maskable Interrupt", "Breakpoint",
@@ -43,6 +48,8 @@ void pic_remap() {
 
 void idt_init() {
     pic_remap();
+    
+    // Set up exception handlers (0-31)
     idt_set_gate(0, (unsigned long)isr0, 0x08, 0x8E);
     idt_set_gate(1, (unsigned long)isr1, 0x08, 0x8E);
     idt_set_gate(2, (unsigned long)isr2, 0x08, 0x8E);
@@ -75,6 +82,8 @@ void idt_init() {
     idt_set_gate(29, (unsigned long)isr29, 0x08, 0x8E);
     idt_set_gate(30, (unsigned long)isr30, 0x08, 0x8E);
     idt_set_gate(31, (unsigned long)isr31, 0x08, 0x8E);
+    
+    // Set up IRQ handlers (32-47)
     idt_set_gate(32, (unsigned long)irq0, 0x08, 0x8E);
     idt_set_gate(33, (unsigned long)irq1, 0x08, 0x8E);
     idt_set_gate(34, (unsigned long)irq2, 0x08, 0x8E);
@@ -91,6 +100,11 @@ void idt_init() {
     idt_set_gate(45, (unsigned long)irq13, 0x08, 0x8E);
     idt_set_gate(46, (unsigned long)irq14, 0x08, 0x8E);
     idt_set_gate(47, (unsigned long)irq15, 0x08, 0x8E);
+    
+    // Set up system call handler (INT 0x80)
+    // DPL=3 (user mode can call), 0xEE = 11101110
+    idt_set_gate(0x80, (unsigned long)syscall_entry, 0x08, 0xEE);
+    
     idt_load();
 }
 
@@ -101,6 +115,7 @@ void isr_handler(unsigned int int_no, unsigned int err_code) {
         page_fault(err_code, faulting_address);
         return;
     }
+    
     print_string("\n[EXCEPTION] ");
     print_string(exception_messages[int_no]);
     print_string(" (");
@@ -110,6 +125,7 @@ void isr_handler(unsigned int int_no, unsigned int err_code) {
     print_hex(err_code);
     print_string("\n");
     print_string("System halted.\n");
+    
     for(;;);
 }
 
