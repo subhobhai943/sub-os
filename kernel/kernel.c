@@ -4,6 +4,8 @@
 #include "kernel.h"
 #include "idt.h"
 #include "keyboard.h"
+#include "timer.h"
+#include "memory.h"
 
 // VGA text mode definitions
 #define VIDEO_MEMORY 0xb8000
@@ -53,13 +55,11 @@ void print_string(const char *str) {
             cursor_row++;
             cursor_col = 0;
         } else if (str[i] == '\b') {
-            // Backspace
             if (cursor_col > 0) {
                 cursor_col--;
                 print_char(' ', cursor_col, cursor_row, WHITE_ON_BLACK);
             }
         } else if (str[i] == '\t') {
-            // Tab - move to next multiple of 4
             cursor_col = (cursor_col + 4) & ~3;
         } else {
             print_char(str[i], cursor_col, cursor_row, WHITE_ON_BLACK);
@@ -70,7 +70,6 @@ void print_string(const char *str) {
             }
         }
         if (cursor_row >= MAX_ROWS) {
-            // Simple scroll - move everything up one line
             for (int row = 0; row < MAX_ROWS - 1; row++) {
                 for (int col = 0; col < MAX_COLS; col++) {
                     unsigned char *vidmem = (unsigned char*)VIDEO_MEMORY;
@@ -80,7 +79,6 @@ void print_string(const char *str) {
                     vidmem[dst_offset + 1] = vidmem[src_offset + 1];
                 }
             }
-            // Clear last line
             for (int col = 0; col < MAX_COLS; col++) {
                 print_char(' ', col, MAX_ROWS - 1, WHITE_ON_BLACK);
             }
@@ -103,18 +101,44 @@ void print_hex(unsigned int num) {
     print_string(buffer);
 }
 
-// Custom IRQ handler that calls keyboard handler
+// Print decimal number
+void print_dec(unsigned int num) {
+    if (num == 0) {
+        print_string("0");
+        return;
+    }
+    
+    char buffer[12];
+    int i = 0;
+    
+    while (num > 0) {
+        buffer[i++] = '0' + (num % 10);
+        num /= 10;
+    }
+    
+    // Print in reverse
+    for (int j = i - 1; j >= 0; j--) {
+        char str[2] = {buffer[j], 0};
+        print_string(str);
+    }
+}
+
+// Custom IRQ handler that calls device handlers
 void irq_handler(unsigned int irq_no, unsigned int err_code) {
+    // Handle timer interrupt (IRQ0)
+    if (irq_no == 32) {
+        timer_handler();
+    }
     // Handle keyboard interrupt (IRQ1)
-    if (irq_no == 33) {
+    else if (irq_no == 33) {
         keyboard_handler();
     }
     
     // Send EOI (End of Interrupt) to PICs
     if (irq_no >= 40) {
-        outb(0xA0, 0x20);  // Send to slave
+        outb(0xA0, 0x20);
     }
-    outb(0x20, 0x20);      // Send to master
+    outb(0x20, 0x20);
 }
 
 // Kernel main function
@@ -122,7 +146,7 @@ void main() {
     clear_screen();
     
     print_string("========================================\n");
-    print_string("     SUB OS - Alpha v0.2.0              \n");
+    print_string("     SUB OS - Alpha v0.3.0              \n");
     print_string("     Built from Scratch                 \n");
     print_string("========================================\n\n");
     
@@ -136,33 +160,69 @@ void main() {
     // Initialize IDT
     print_string("[OK] Initializing IDT...\n");
     idt_init();
-    print_string("[OK] IDT loaded and interrupts enabled\n");
+    print_string("[OK] IDT loaded\n");
+    
+    // Initialize timer
+    timer_init();
+    
+    // Initialize memory detection
+    print_string("\n");
+    memory_init();
     
     // Initialize keyboard
+    print_string("\n");
     keyboard_init();
     
     print_string("\n");
     print_string("SUB OS Kernel Features:\n");
     print_string("  * 32-bit Protected Mode\n");
     print_string("  * Custom Bootloader\n");
-    print_string("  * VGA Text Mode Driver\n");
-    print_string("  * Interrupt Descriptor Table\n");
-    print_string("  * Exception Handling\n");
+    print_string("  * VGA Text Mode Driver with Scrolling\n");
+    print_string("  * Interrupt Descriptor Table (IDT)\n");
+    print_string("  * Exception Handling (32 exceptions)\n");
+    print_string("  * Hardware IRQ Handling (16 IRQs)\n");
     print_string("  * PS/2 Keyboard Driver\n");
-    print_string("  * Hardware Interrupt Handling\n\n");
+    print_string("  * PIT Timer Driver (100 Hz)\n");
+    print_string("  * Memory Detection (E820)\n");
+    print_string("  * Memory Map Parsing\n\n");
     
     print_string("System Status: RUNNING\n");
     print_string("Architecture: x86\n");
-    print_string("Build Date: November 11, 2025\n\n");
+    print_string("Build Date: November 11, 2025\n");
+    print_string("Uptime: 0 seconds\n\n");
     
     // Enable interrupts
     asm volatile("sti");
     
-    print_string("Interrupts enabled! Try typing...\n");
-    print_string("Type something: ");
+    print_string("System ready! Type something...\n");
+    print_string("> ");
     
-    // Main kernel loop - now handles keyboard input
+    unsigned long last_second = 0;
+    
+    // Main kernel loop
     while(1) {
-        asm volatile("hlt");  // Halt until next interrupt
+        // Update uptime display every second
+        unsigned long uptime = get_uptime();
+        if (uptime != last_second) {
+            last_second = uptime;
+            
+            // Save cursor position
+            int saved_row = cursor_row;
+            int saved_col = cursor_col;
+            
+            // Update uptime at line 17
+            cursor_row = 17;
+            cursor_col = 8;
+            print_string("  ");
+            cursor_col = 8;
+            print_dec(uptime);
+            print_string(" seconds  ");
+            
+            // Restore cursor position
+            cursor_row = saved_row;
+            cursor_col = saved_col;
+        }
+        
+        asm volatile("hlt");
     }
 }
