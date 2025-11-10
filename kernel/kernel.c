@@ -6,6 +6,8 @@
 #include "keyboard.h"
 #include "timer.h"
 #include "memory.h"
+#include "pmm.h"
+#include "heap.h"
 
 // VGA text mode definitions
 #define VIDEO_MEMORY 0xb8000
@@ -116,29 +118,81 @@ void print_dec(unsigned int num) {
         num /= 10;
     }
     
-    // Print in reverse
     for (int j = i - 1; j >= 0; j--) {
         char str[2] = {buffer[j], 0};
         print_string(str);
     }
 }
 
-// Custom IRQ handler that calls device handlers
+// Custom IRQ handler
 void irq_handler(unsigned int irq_no, unsigned int err_code) {
-    // Handle timer interrupt (IRQ0)
     if (irq_no == 32) {
         timer_handler();
     }
-    // Handle keyboard interrupt (IRQ1)
     else if (irq_no == 33) {
         keyboard_handler();
     }
     
-    // Send EOI (End of Interrupt) to PICs
     if (irq_no >= 40) {
         outb(0xA0, 0x20);
     }
     outb(0x20, 0x20);
+}
+
+// Test memory allocation
+void test_memory() {
+    print_string("\nTesting memory allocation...\n");
+    
+    // Test kmalloc
+    print_string("  Allocating 100 bytes... ");
+    void* ptr1 = kmalloc(100);
+    if (ptr1) {
+        print_string("Success at ");
+        print_hex((unsigned int)ptr1);
+        print_string("\n");
+    } else {
+        print_string("Failed!\n");
+    }
+    
+    // Test another allocation
+    print_string("  Allocating 256 bytes... ");
+    void* ptr2 = kmalloc(256);
+    if (ptr2) {
+        print_string("Success at ");
+        print_hex((unsigned int)ptr2);
+        print_string("\n");
+    } else {
+        print_string("Failed!\n");
+    }
+    
+    // Free first allocation
+    print_string("  Freeing first allocation...\n");
+    kfree(ptr1);
+    
+    // Allocate again
+    print_string("  Allocating 50 bytes... ");
+    void* ptr3 = kmalloc(50);
+    if (ptr3) {
+        print_string("Success at ");
+        print_hex((unsigned int)ptr3);
+        print_string("\n");
+    } else {
+        print_string("Failed!\n");
+    }
+    
+    // Get heap stats
+    unsigned int total, used, free;
+    heap_get_stats(&total, &used, &free);
+    print_string("\nHeap Statistics:\n");
+    print_string("  Total: ");
+    print_dec(total);
+    print_string(" bytes\n");
+    print_string("  Used: ");
+    print_dec(used);
+    print_string(" bytes\n");
+    print_string("  Free: ");
+    print_dec(free);
+    print_string(" bytes\n");
 }
 
 // Kernel main function
@@ -146,21 +200,17 @@ void main() {
     clear_screen();
     
     print_string("========================================\n");
-    print_string("     SUB OS - Alpha v0.3.0              \n");
+    print_string("     SUB OS - Alpha v0.4.0              \n");
     print_string("     Built from Scratch                 \n");
     print_string("========================================\n\n");
     
     print_string("[OK] Bootloader initialized\n");
     print_string("[OK] Protected mode enabled\n");
     print_string("[OK] GDT loaded\n");
-    print_string("[OK] Kernel loaded at ");
-    print_hex((unsigned int)&main);
-    print_string("\n");
+    print_string("[OK] Kernel loaded\n");
     
     // Initialize IDT
-    print_string("[OK] Initializing IDT...\n");
     idt_init();
-    print_string("[OK] IDT loaded\n");
     
     // Initialize timer
     timer_init();
@@ -169,6 +219,14 @@ void main() {
     print_string("\n");
     memory_init();
     
+    // Initialize Physical Memory Manager
+    print_string("\n");
+    pmm_init();
+    
+    // Initialize Heap
+    print_string("\n");
+    heap_init();
+    
     // Initialize keyboard
     print_string("\n");
     keyboard_init();
@@ -176,53 +234,53 @@ void main() {
     print_string("\n");
     print_string("SUB OS Kernel Features:\n");
     print_string("  * 32-bit Protected Mode\n");
-    print_string("  * Custom Bootloader\n");
-    print_string("  * VGA Text Mode Driver with Scrolling\n");
-    print_string("  * Interrupt Descriptor Table (IDT)\n");
-    print_string("  * Exception Handling (32 exceptions)\n");
-    print_string("  * Hardware IRQ Handling (16 IRQs)\n");
+    print_string("  * Interrupt Handling (IDT)\n");
     print_string("  * PS/2 Keyboard Driver\n");
     print_string("  * PIT Timer Driver (100 Hz)\n");
     print_string("  * Memory Detection (E820)\n");
-    print_string("  * Memory Map Parsing\n\n");
+    print_string("  * Physical Memory Manager\n");
+    print_string("  * Heap Allocator (kmalloc/kfree)\n\n");
     
     print_string("System Status: RUNNING\n");
     print_string("Architecture: x86\n");
     print_string("Build Date: November 11, 2025\n");
-    print_string("Uptime: 0 seconds\n\n");
+    print_string("Uptime: 0 seconds\n");
+    
+    // Display memory stats
+    print_string("\nMemory Statistics:\n");
+    print_string("  Free pages: ");
+    print_dec(pmm_get_free_pages());
+    print_string(" (");
+    print_dec(pmm_get_free_memory() / 1024);
+    print_string(" KB)\n");
+    
+    // Test memory allocation
+    test_memory();
     
     // Enable interrupts
     asm volatile("sti");
     
-    print_string("System ready! Type something...\n");
+    print_string("\nSystem ready! Type something...\n");
     print_string("> ");
     
     unsigned long last_second = 0;
     
     // Main kernel loop
     while(1) {
-        // Update uptime display every second
         unsigned long uptime = get_uptime();
         if (uptime != last_second) {
             last_second = uptime;
-            
-            // Save cursor position
             int saved_row = cursor_row;
             int saved_col = cursor_col;
-            
-            // Update uptime at line 17
             cursor_row = 17;
             cursor_col = 8;
             print_string("  ");
             cursor_col = 8;
             print_dec(uptime);
             print_string(" seconds  ");
-            
-            // Restore cursor position
             cursor_row = saved_row;
             cursor_col = saved_col;
         }
-        
         asm volatile("hlt");
     }
 }

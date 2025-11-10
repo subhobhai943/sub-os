@@ -21,4 +21,7 @@ SECTIONS
     .bss : {
         *(.bss)
     }
+    
+    /* Mark end of kernel */
+    kernel_end = .;
 }
