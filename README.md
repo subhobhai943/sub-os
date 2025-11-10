@@ -5,52 +5,57 @@
 ![License](https://img.shields.io/badge/license-MIT-blue.svg)
 ![Status](https://img.shields.io/badge/status-alpha-orange.svg)
 ![Architecture](https://img.shields.io/badge/arch-x86-green.svg)
-![Version](https://img.shields.io/badge/version-0.3.0-blue.svg)
+![Version](https://img.shields.io/badge/version-0.5.0-blue.svg)
 
 ## 🚀 Overview
 
 SUB OS is a custom operating system built entirely from scratch without using existing kernels (Linux, Windows, or macOS). The goal is to create the world's smoothest and lag-free operating system within 365 days.
 
-**Current Version:** Alpha v0.3.0  
+**Current Version:** Alpha v0.5.0  
 **Development Started:** November 11, 2025  
-**Current Day:** 3 of 365  
-**Progress:** ~7% complete
+**Current Day:** 5 of 365  
+**Progress:** ~10% complete
 
 ## ✨ Features
 
-### Currently Implemented (Day 3)
-- ✅ Custom bootloader (written in x86 Assembly)
+### Currently Implemented (Day 5)
+- ✅ Custom bootloader (x86 Assembly)
 - ✅ 32-bit Protected Mode
 - ✅ Global Descriptor Table (GDT)
 - ✅ VGA Text Mode Driver with scrolling
 - ✅ Interrupt Descriptor Table (IDT)
 - ✅ Exception handling (32 CPU exceptions)
 - ✅ Hardware interrupt handling (16 IRQs)
-- ✅ Programmable Interrupt Controller (PIC) setup
+- ✅ Programmable Interrupt Controller (PIC)
 - ✅ PS/2 Keyboard driver with buffer
-- ✅ **PIT Timer driver (100 Hz)**
-- ✅ **System uptime tracking**
-- ✅ **Memory detection (BIOS E820)**
-- ✅ **Memory map parsing and display**
+- ✅ PIT Timer driver (100 Hz)
+- ✅ System uptime tracking
+- ✅ Memory detection (BIOS E820)
+- ✅ Memory map parsing and display
+- ✅ Physical Memory Manager (bitmap allocator)
+- ✅ **Virtual Memory (Paging)** 🆕
+- ✅ **Page Directory & Page Tables** 🆕
+- ✅ **Identity Mapping** 🆕
+- ✅ Heap Allocator (kmalloc/kfree)
 - ✅ Modular kernel architecture
 
 ### Roadmap (365 Days)
 - [x] Bootloader ✅
 - [x] Protected Mode ✅
-- [x] Interrupt Descriptor Table (IDT) ✅
+- [x] Interrupt Handling ✅
 - [x] Keyboard driver ✅
 - [x] Timer driver ✅
 - [x] Memory detection ✅
-- [ ] Physical memory manager
-- [ ] Virtual memory (paging)
-- [ ] Heap allocator
+- [x] Physical Memory Manager ✅
+- [x] Virtual Memory (Paging) ✅
+- [x] Heap allocator ✅
 - [ ] Process management
 - [ ] Scheduler
 - [ ] File system
-- [ ] Device drivers (disk, display)
+- [ ] Disk driver
 - [ ] System calls
 - [ ] User mode
-- [ ] Command shell
+- [ ] Shell
 - [ ] GUI (stretch goal)
 
 ## 🛠️ Building SUB OS
@@ -99,25 +104,31 @@ sub-os/
 ├── boot/                      # Bootloader code
 │   ├── boot.asm              # Main bootloader
 │   ├── gdt.asm               # Global Descriptor Table
-│   ├── disk_load.asm         # Disk reading functions
-│   ├── memory_detect.asm     # BIOS E820 memory detection
+│   ├── disk_load.asm         # Disk reading
+│   ├── memory_detect.asm     # E820 memory detection
 │   ├── print_string.asm      # Real mode printing
 │   ├── print_string_pm.asm   # Protected mode printing
 │   └── switch_to_pm.asm      # Mode switching
 ├── kernel/                    # Kernel source code
 │   ├── kernel_entry.asm      # Kernel entry point
-│   ├── kernel.c              # Main kernel code
+│   ├── kernel.c              # Main kernel
 │   ├── kernel.h              # Kernel header
-│   ├── idt.asm               # IDT assembly code
-│   ├── isr.asm               # Interrupt service routines
+│   ├── idt.asm               # IDT assembly
+│   ├── isr.asm               # ISR handlers
 │   ├── idt.c                 # IDT C implementation
 │   ├── idt.h                 # IDT header
 │   ├── keyboard.c            # Keyboard driver
 │   ├── keyboard.h            # Keyboard header
 │   ├── timer.c               # Timer driver
 │   ├── timer.h               # Timer header
-│   ├── memory.c              # Memory manager
-│   └── memory.h              # Memory header
+│   ├── memory.c              # Memory detection
+│   ├── memory.h              # Memory header
+│   ├── pmm.c                 # Physical Memory Manager
+│   ├── pmm.h                 # PMM header
+│   ├── paging.c              # Virtual Memory (NEW!)
+│   ├── paging.h              # Paging header (NEW!)
+│   ├── heap.c                # Heap allocator
+│   └── heap.h                # Heap header
 ├── build/                     # Build output (generated)
 ├── Makefile                   # Build system
 ├── linker.ld                  # Linker script
@@ -126,7 +137,7 @@ sub-os/
 
 ## 🎯 Design Goals
 
-1. **Performance First**: Minimize context switch overhead and optimize scheduling
+1. **Performance First**: Minimize overhead and optimize scheduling
 2. **Lag-Free Experience**: Advanced caching and predictive algorithms
 3. **Clean Architecture**: Well-documented, modular code
 4. **Educational**: Serve as a learning resource for OS development
@@ -135,76 +146,98 @@ sub-os/
 
 When you run SUB OS, you'll see:
 
-1. **Boot Sequence**: Bootloader initializes and loads kernel
-2. **Memory Detection**: BIOS E820 memory map displayed
-3. **System Information**: Hardware details and available memory
-4. **Live Uptime Counter**: Updates every second
-5. **Interactive Shell**: Type and see your input echoed
+1. **Boot Sequence**: Bootloader initialization
+2. **Memory Detection**: E820 memory map
+3. **Paging Setup**: Virtual memory enabled
+4. **System Information**: Hardware details
+5. **Live Uptime**: Updates every second
+6. **Interactive Input**: Type and see echo
 
 ### What You Can Do:
-- **Type** and see characters appear in real-time
+- **Type** and see real-time character echo
 - **Watch** the uptime counter increment
-- **See** the memory map of your system
-- **Experience** a real OS running bare metal!
+- **See** detailed memory information
+- **Experience** a fully functional paging system
 
 ## 📚 Technical Details
 
 ### Boot Process
-1. BIOS loads bootloader into memory at 0x7c00
-2. Bootloader detects memory using INT 0x15, EAX=0xE820
-3. Bootloader loads kernel from disk sectors 2-21
-4. Bootloader sets up GDT and switches to Protected Mode
-5. Bootloader jumps to kernel at 0x1000
+1. BIOS loads bootloader at 0x7c00
+2. Bootloader detects memory (E820)
+3. Bootloader loads kernel from disk
+4. GDT setup and Protected Mode switch
+5. Jump to kernel at 0x1000
 
-### Memory Detection
-- Uses BIOS E820 function to query memory map
-- Stores map at physical address 0x5000
-- Identifies usable, reserved, and ACPI memory regions
-- Displays detailed memory map on boot
+### Virtual Memory (Paging)
+- **Page Size**: 4KB (4096 bytes)
+- **Page Directory**: 1024 entries
+- **Page Tables**: 1024 entries each
+- **Identity Mapping**: First 4MB (0x0 - 0x400000)
+- **Heap Mapping**: 1MB heap space (0x400000 - 0x500000)
+- **Page Faults**: Handled with detailed error reporting
 
-### Timer System
-- PIT (Programmable Interval Timer) configured to 100 Hz
-- IRQ0 generates timer interrupts 100 times per second
-- System tracks ticks for uptime and timing functions
-- Supports sleep_ms() for delays
+### Memory Management
+**Physical Memory Manager**:
+- Bitmap allocator (1 bit per page)
+- Single page allocation
+- Multi-page contiguous allocation
+- Statistics tracking
+
+**Virtual Memory**:
+- Page directory at CR3
+- Page tables on-demand
+- Identity mapped kernel
+- Separate address spaces possible
+
+**Heap Allocator**:
+- Dynamic memory allocation
+- Block coalescing
+- First-fit strategy
+- 64KB initial size
 
 ### Interrupt Handling
-- **IDT**: 256-entry Interrupt Descriptor Table
-- **Exceptions**: 32 CPU exception handlers
-- **IRQs**: 16 hardware interrupt handlers
+- **IDT**: 256-entry table
+- **Exceptions**: 32 CPU exceptions including page faults
+- **IRQs**: 16 hardware interrupts
   - IRQ0: Timer (PIT)
   - IRQ1: Keyboard
-  - IRQ2-15: Reserved for future devices
-- **PIC**: 8259 PIC remapped to avoid conflicts
+  - IRQ14: Page Fault Handler
+- **PIC**: 8259 remapped
 
 ### Keyboard Driver
-- **PS/2 Protocol**: Reads from port 0x60
-- **Input Buffer**: 256-byte circular buffer
-- **Scancode Translation**: US QWERTY layout
-- **Special Keys**: Backspace, tab, enter, space
+- PS/2 protocol
+- 256-byte circular buffer
+- US QWERTY layout
+- Special key support
+
+### Timer System
+- PIT configured to 100 Hz
+- IRQ0 interrupt handler
+- Uptime tracking
+- Sleep/wait functions
 
 ## 📊 System Requirements
 
 - **CPU**: x86 (32-bit) or x86-64
-- **RAM**: Minimum 1MB (detected automatically)
-- **Disk**: Floppy or hard drive with at least 10KB
-- **Display**: VGA-compatible text mode (80x25)
+- **RAM**: Minimum 1MB (auto-detected)
+- **Disk**: Floppy or HDD with 10KB+ space
+- **Display**: VGA text mode (80x25)
 
 ## 📚 Learning Resources
 
-- [OSDev Wiki](https://wiki.osdev.org/) - Comprehensive OS development resource
+- [OSDev Wiki](https://wiki.osdev.org/)
+- [Intel x86 Manual](https://www.intel.com/content/www/us/en/developer/articles/technical/intel-sdm.html)
+- [Paging Tutorial](https://wiki.osdev.org/Paging)
 - [The little book about OS development](https://littleosbook.github.io/)
 - [os-tutorial by Carlos Fenollosa](https://github.com/cfenollosa/os-tutorial)
-- [Intel x86 Manual](https://www.intel.com/content/www/us/en/developer/articles/technical/intel-sdm.html)
-- [BIOS E820 Specification](https://wiki.osdev.org/Detecting_Memory_(x86))
 
 ## 🤝 Contributing
 
-This is currently a solo project for the 365-day challenge, but suggestions and feedback are welcome! Feel free to open issues or discussions.
+This is a solo 365-day challenge project, but suggestions and feedback are welcome! Open issues or discussions.
 
 ## 📝 License
 
-MIT License - See LICENSE file for details
+MIT License - See LICENSE file
 
 ## 👨‍💻 Author
 
@@ -216,26 +249,30 @@ Building web apps, experimenting with AI, and exploring game development
 
 | Date | Milestone | Status |
 |------|-----------|--------|
-| Nov 11, 2025 | Project initialization, bootloader, basic kernel | ✅ Complete |
-| Nov 11, 2025 | IDT, exception handling, keyboard driver | ✅ Complete |
-| Nov 11, 2025 | Timer driver, memory detection, uptime tracking | ✅ Complete |
+| Nov 11, 2025 | Bootloader, basic kernel | ✅ Complete |
+| Nov 11, 2025 | IDT, interrupts, keyboard | ✅ Complete |
+| Nov 11, 2025 | Timer, memory detection | ✅ Complete |
+| Nov 11, 2025 | PMM, heap allocator | ✅ Complete |
+| Nov 11, 2025 | Virtual memory (paging) | ✅ Complete |
 
-## 🎯 Next Steps (Day 4)
+## 🎯 Next Steps (Day 6)
 
-- Physical memory manager with bitmap allocator
-- Page frame allocation (4KB pages)
-- Memory allocation/deallocation functions
-- Preparation for virtual memory (paging)
+- Process Control Blocks (PCB)
+- Task switching mechanism
+- Simple round-robin scheduler
+- Multi-tasking foundation
 
-## 📊 Development Statistics
+## 📈 Development Statistics
 
-- **Days Elapsed**: 3 of 365
-- **Progress**: ~7%
-- **Total Files**: 28
-- **Lines of Code**: ~2,100
-- **Commits**: 10+
-- **Features Implemented**: 14
+- **Days Elapsed**: 5 of 365
+- **Progress**: ~10%
+- **Total Files**: 34
+- **Lines of Code**: ~4,000
+- **Commits**: 24+
+- **Features Implemented**: 19 major systems
 
 ---
 
-**Status**: Day 3 of 365 - Timer and memory systems online! ⏰💾🚀
+**Status**: Day 5 of 365 - Virtual memory enabled! 🧠💾🚀
+
+Virtual memory is one of the most complex parts of OS development - congratulations on reaching this milestone!

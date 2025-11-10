@@ -8,18 +8,16 @@
 #include "memory.h"
 #include "pmm.h"
 #include "heap.h"
+#include "paging.h"
 
-// VGA text mode definitions
 #define VIDEO_MEMORY 0xb8000
 #define MAX_ROWS 25
 #define MAX_COLS 80
 #define WHITE_ON_BLACK 0x0f
 
-// Cursor position
 int cursor_row = 0;
 int cursor_col = 0;
 
-// I/O port operations
 void outb(unsigned short port, unsigned char val) {
     asm volatile ("outb %0, %1" : : "a"(val), "Nd"(port));
 }
@@ -30,7 +28,6 @@ unsigned char inb(unsigned short port) {
     return ret;
 }
 
-// Print character at specific location
 void print_char(char c, int col, int row, char attr) {
     unsigned char *vidmem = (unsigned char*)VIDEO_MEMORY;
     int offset = 2 * (row * MAX_COLS + col);
@@ -38,7 +35,6 @@ void print_char(char c, int col, int row, char attr) {
     vidmem[offset + 1] = attr;
 }
 
-// Clear screen
 void clear_screen() {
     for (int row = 0; row < MAX_ROWS; row++) {
         for (int col = 0; col < MAX_COLS; col++) {
@@ -49,7 +45,6 @@ void clear_screen() {
     cursor_col = 0;
 }
 
-// Print string
 void print_string(const char *str) {
     int i = 0;
     while (str[i] != 0) {
@@ -90,41 +85,33 @@ void print_string(const char *str) {
     }
 }
 
-// Print hexadecimal number
 void print_hex(unsigned int num) {
     char hex_chars[] = "0123456789ABCDEF";
     char buffer[11] = "0x00000000";
-    
     for (int i = 9; i >= 2; i--) {
         buffer[i] = hex_chars[num & 0xF];
         num >>= 4;
     }
-    
     print_string(buffer);
 }
 
-// Print decimal number
 void print_dec(unsigned int num) {
     if (num == 0) {
         print_string("0");
         return;
     }
-    
     char buffer[12];
     int i = 0;
-    
     while (num > 0) {
         buffer[i++] = '0' + (num % 10);
         num /= 10;
     }
-    
     for (int j = i - 1; j >= 0; j--) {
         char str[2] = {buffer[j], 0};
         print_string(str);
     }
 }
 
-// Custom IRQ handler
 void irq_handler(unsigned int irq_no, unsigned int err_code) {
     if (irq_no == 32) {
         timer_handler();
@@ -132,105 +119,35 @@ void irq_handler(unsigned int irq_no, unsigned int err_code) {
     else if (irq_no == 33) {
         keyboard_handler();
     }
-    
     if (irq_no >= 40) {
         outb(0xA0, 0x20);
     }
     outb(0x20, 0x20);
 }
 
-// Test memory allocation
-void test_memory() {
-    print_string("\nTesting memory allocation...\n");
-    
-    // Test kmalloc
-    print_string("  Allocating 100 bytes... ");
-    void* ptr1 = kmalloc(100);
-    if (ptr1) {
-        print_string("Success at ");
-        print_hex((unsigned int)ptr1);
-        print_string("\n");
-    } else {
-        print_string("Failed!\n");
-    }
-    
-    // Test another allocation
-    print_string("  Allocating 256 bytes... ");
-    void* ptr2 = kmalloc(256);
-    if (ptr2) {
-        print_string("Success at ");
-        print_hex((unsigned int)ptr2);
-        print_string("\n");
-    } else {
-        print_string("Failed!\n");
-    }
-    
-    // Free first allocation
-    print_string("  Freeing first allocation...\n");
-    kfree(ptr1);
-    
-    // Allocate again
-    print_string("  Allocating 50 bytes... ");
-    void* ptr3 = kmalloc(50);
-    if (ptr3) {
-        print_string("Success at ");
-        print_hex((unsigned int)ptr3);
-        print_string("\n");
-    } else {
-        print_string("Failed!\n");
-    }
-    
-    // Get heap stats
-    unsigned int total, used, free;
-    heap_get_stats(&total, &used, &free);
-    print_string("\nHeap Statistics:\n");
-    print_string("  Total: ");
-    print_dec(total);
-    print_string(" bytes\n");
-    print_string("  Used: ");
-    print_dec(used);
-    print_string(" bytes\n");
-    print_string("  Free: ");
-    print_dec(free);
-    print_string(" bytes\n");
-}
-
-// Kernel main function
 void main() {
     clear_screen();
-    
     print_string("========================================\n");
-    print_string("     SUB OS - Alpha v0.4.0              \n");
+    print_string("     SUB OS - Alpha v0.5.0              \n");
     print_string("     Built from Scratch                 \n");
     print_string("========================================\n\n");
-    
     print_string("[OK] Bootloader initialized\n");
     print_string("[OK] Protected mode enabled\n");
     print_string("[OK] GDT loaded\n");
     print_string("[OK] Kernel loaded\n");
-    
-    // Initialize IDT
     idt_init();
-    
-    // Initialize timer
+    print_string("[OK] IDT loaded\n");
     timer_init();
-    
-    // Initialize memory detection
     print_string("\n");
     memory_init();
-    
-    // Initialize Physical Memory Manager
     print_string("\n");
     pmm_init();
-    
-    // Initialize Heap
+    print_string("\n");
+    paging_init();
     print_string("\n");
     heap_init();
-    
-    // Initialize keyboard
     print_string("\n");
     keyboard_init();
-    
     print_string("\n");
     print_string("SUB OS Kernel Features:\n");
     print_string("  * 32-bit Protected Mode\n");
@@ -239,33 +156,23 @@ void main() {
     print_string("  * PIT Timer Driver (100 Hz)\n");
     print_string("  * Memory Detection (E820)\n");
     print_string("  * Physical Memory Manager\n");
+    print_string("  * Virtual Memory (Paging)\n");
     print_string("  * Heap Allocator (kmalloc/kfree)\n\n");
-    
     print_string("System Status: RUNNING\n");
     print_string("Architecture: x86\n");
     print_string("Build Date: November 11, 2025\n");
     print_string("Uptime: 0 seconds\n");
-    
-    // Display memory stats
     print_string("\nMemory Statistics:\n");
     print_string("  Free pages: ");
     print_dec(pmm_get_free_pages());
     print_string(" (");
     print_dec(pmm_get_free_memory() / 1024);
     print_string(" KB)\n");
-    
-    // Test memory allocation
-    test_memory();
-    
-    // Enable interrupts
     asm volatile("sti");
-    
-    print_string("\nSystem ready! Type something...\n");
+    print_string("\nSystem ready! Paging enabled.\n");
+    print_string("Type something...\n");
     print_string("> ");
-    
     unsigned long last_second = 0;
-    
-    // Main kernel loop
     while(1) {
         unsigned long uptime = get_uptime();
         if (uptime != last_second) {
