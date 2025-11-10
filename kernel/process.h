@@ -4,7 +4,6 @@
 #ifndef PROCESS_H
 #define PROCESS_H
 
-// Process states
 typedef enum {
     PROCESS_READY,
     PROCESS_RUNNING,
@@ -12,39 +11,42 @@ typedef enum {
     PROCESS_TERMINATED
 } process_state_t;
 
-// CPU registers saved during context switch
+typedef enum {
+    PROCESS_KERNEL = 0,
+    PROCESS_USER = 3
+} process_privilege_t;
+
 typedef struct {
     unsigned int eax, ebx, ecx, edx;
     unsigned int esi, edi;
     unsigned int esp, ebp;
     unsigned int eip;
     unsigned int eflags;
-    unsigned int cr3;  // Page directory
+    unsigned int cr3;
 } registers_t;
 
-// Process Control Block (PCB)
 typedef struct process {
-    unsigned int pid;              // Process ID
-    char name[32];                 // Process name
-    process_state_t state;         // Current state
-    registers_t registers;         // Saved registers
-    unsigned int kernel_stack;     // Kernel stack
-    unsigned int user_stack;       // User stack
-    unsigned int page_directory;   // Virtual memory space
-    unsigned long priority;        // Scheduling priority
-    unsigned long quantum;         // Time quantum (ticks)
-    unsigned long cpu_time;        // Total CPU time used
-    struct process* next;          // Next process in queue
+    unsigned int pid;
+    char name[32];
+    process_state_t state;
+    process_privilege_t privilege;
+    registers_t registers;
+    unsigned int kernel_stack;
+    unsigned int user_stack;
+    unsigned int page_directory;
+    unsigned long priority;
+    unsigned long quantum;
+    unsigned long cpu_time;
+    struct process* next;
 } process_t;
 
-// Process management functions
 void process_init();
 process_t* process_create(const char* name, void (*entry_point)());
+process_t* process_create_user(const char* name, void (*entry_point)());
 void process_terminate(process_t* process);
 process_t* process_get_current();
 void process_switch(process_t* next);
 
-// Scheduler functions
 void scheduler_init();
 void scheduler_add(process_t* process);
 void scheduler_remove(process_t* process);

@@ -1,4 +1,4 @@
-// SUB OS Kernel - Main Entry Point
+// SUB OS Kernel v0.8.0
 // Copyright (c) 2025 SUB OS Project
 
 #include "kernel.h"
@@ -11,6 +11,7 @@
 #include "paging.h"
 #include "process.h"
 #include "syscall.h"
+#include "tss.h"
 
 #define VIDEO_MEMORY 0xb8000
 #define MAX_ROWS 25
@@ -130,42 +131,29 @@ void irq_handler(unsigned int irq_no, unsigned int err_code) {
     outb(0x20, 0x20);
 }
 
-void test_syscall() {
-    int pid, result;
-    
-    // Test getpid
+void user_test_program() {
+    int pid;
     asm volatile("mov $6, %%eax; int $0x80" : "=a"(pid));
-    print_string("  [TEST] getpid() = ");
-    print_dec(pid);
-    print_string("\n");
     
-    // Test write
-    const char* msg = "Hello from syscall!\n";
+    const char* msg = "Hello from USER MODE!\n";
+    int result;
     asm volatile(
         "mov $3, %%eax;"
         "mov $1, %%ebx;"
         "mov %1, %%ecx;"
-        "mov $20, %%edx;"
+        "mov $23, %%edx;"
         "int $0x80"
         : "=a"(result)
         : "r"(msg)
         : "ebx", "ecx", "edx"
     );
     
-    // Test yield
-    asm volatile("mov $8, %%eax; int $0x80" : "=a"(result));
-    print_string("  [TEST] yield() = ");
-    print_dec(result);
-    print_string("\n");
-}
-
-void test_process_1() {
     while(1) {
         asm volatile("hlt");
     }
 }
 
-void test_process_2() {
+void kernel_test_1() {
     while(1) {
         asm volatile("hlt");
     }
@@ -174,7 +162,7 @@ void test_process_2() {
 void main() {
     clear_screen();
     print_string("========================================\n");
-    print_string("     SUB OS - Alpha v0.7.0              \n");
+    print_string("     SUB OS - Alpha v0.8.0              \n");
     print_string("     Built from Scratch                 \n");
     print_string("========================================\n\n");
     print_string("[OK] Bootloader initialized\n");
@@ -199,19 +187,22 @@ void main() {
     print_string("\n");
     syscall_init();
     print_string("\n");
+    tss_init();
+    print_string("\n");
     keyboard_init();
     
-    print_string("\nCreating test processes...\n");
-    process_t* proc1 = process_create("test1", test_process_1);
+    print_string("\nCreating processes...\n");
+    
+    process_t* proc1 = process_create("kernel_test", kernel_test_1);
     if (proc1) {
-        print_string("  Created process: test1 (PID ");
+        print_string("  Created kernel process (PID ");
         print_dec(proc1->pid);
         print_string(")\n");
     }
     
-    process_t* proc2 = process_create("test2", test_process_2);
+    process_t* proc2 = process_create_user("user_test", user_test_program);
     if (proc2) {
-        print_string("  Created process: test2 (PID ");
+        print_string("  Created USER MODE process (PID ");
         print_dec(proc2->pid);
         print_string(")\n");
     }
@@ -228,13 +219,15 @@ void main() {
     print_string("  * Heap Allocator (kmalloc/kfree)\n");
     print_string("  * Process Management (PCB)\n");
     print_string("  * Round-Robin Scheduler\n");
-    print_string("  * System Calls (INT 0x80)\n\n");
+    print_string("  * System Calls (INT 0x80)\n");
+    print_string("  * User Mode (Ring 3)\n");
+    print_string("  * Task State Segment (TSS)\n\n");
     
     print_string("System Status: RUNNING\n");
     print_string("Architecture: x86\n");
     print_string("Build Date: November 11, 2025\n");
     print_string("Uptime: 0 seconds\n");
-    print_string("Active Processes: 3\n");
+    print_string("Active Processes: 3 (2 kernel + 1 user)\n");
     
     print_string("\nMemory Statistics:\n");
     print_string("  Free pages: ");
@@ -245,10 +238,7 @@ void main() {
     
     asm volatile("sti");
     
-    print_string("\nTesting system calls...\n");
-    test_syscall();
-    
-    print_string("\nMultitasking enabled! System calls active.\n");
+    print_string("\nUser mode enabled! Ring 3 execution active.\n");
     print_string("Type something...\n");
     print_string("> ");
     
