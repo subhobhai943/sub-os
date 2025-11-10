@@ -9,6 +9,7 @@
 #include "pmm.h"
 #include "heap.h"
 #include "paging.h"
+#include "process.h"
 
 #define VIDEO_MEMORY 0xb8000
 #define MAX_ROWS 25
@@ -115,6 +116,10 @@ void print_dec(unsigned int num) {
 void irq_handler(unsigned int irq_no, unsigned int err_code) {
     if (irq_no == 32) {
         timer_handler();
+        // Schedule every 50ms (5 ticks at 100Hz)
+        if (timer_get_ticks() % 5 == 0) {
+            schedule();
+        }
     }
     else if (irq_no == 33) {
         keyboard_handler();
@@ -125,10 +130,25 @@ void irq_handler(unsigned int irq_no, unsigned int err_code) {
     outb(0x20, 0x20);
 }
 
+// Test process functions
+void test_process_1() {
+    while(1) {
+        // Process 1 work
+        asm volatile("hlt");
+    }
+}
+
+void test_process_2() {
+    while(1) {
+        // Process 2 work
+        asm volatile("hlt");
+    }
+}
+
 void main() {
     clear_screen();
     print_string("========================================\n");
-    print_string("     SUB OS - Alpha v0.5.0              \n");
+    print_string("     SUB OS - Alpha v0.6.0              \n");
     print_string("     Built from Scratch                 \n");
     print_string("========================================\n\n");
     print_string("[OK] Bootloader initialized\n");
@@ -147,7 +167,28 @@ void main() {
     print_string("\n");
     heap_init();
     print_string("\n");
+    process_init();
+    print_string("\n");
+    scheduler_init();
+    print_string("\n");
     keyboard_init();
+    
+    // Create test processes
+    print_string("\nCreating test processes...\n");
+    process_t* proc1 = process_create("test1", test_process_1);
+    if (proc1) {
+        print_string("  Created process: test1 (PID ");
+        print_dec(proc1->pid);
+        print_string(")\n");
+    }
+    
+    process_t* proc2 = process_create("test2", test_process_2);
+    if (proc2) {
+        print_string("  Created process: test2 (PID ");
+        print_dec(proc2->pid);
+        print_string(")\n");
+    }
+    
     print_string("\n");
     print_string("SUB OS Kernel Features:\n");
     print_string("  * 32-bit Protected Mode\n");
@@ -157,22 +198,31 @@ void main() {
     print_string("  * Memory Detection (E820)\n");
     print_string("  * Physical Memory Manager\n");
     print_string("  * Virtual Memory (Paging)\n");
-    print_string("  * Heap Allocator (kmalloc/kfree)\n\n");
+    print_string("  * Heap Allocator (kmalloc/kfree)\n");
+    print_string("  * Process Management (PCB)\n");
+    print_string("  * Round-Robin Scheduler\n\n");
+    
     print_string("System Status: RUNNING\n");
     print_string("Architecture: x86\n");
     print_string("Build Date: November 11, 2025\n");
     print_string("Uptime: 0 seconds\n");
+    print_string("Active Processes: 3\n");
+    
     print_string("\nMemory Statistics:\n");
     print_string("  Free pages: ");
     print_dec(pmm_get_free_pages());
     print_string(" (");
     print_dec(pmm_get_free_memory() / 1024);
     print_string(" KB)\n");
+    
     asm volatile("sti");
-    print_string("\nSystem ready! Paging enabled.\n");
+    
+    print_string("\nMultitasking enabled! Scheduler active.\n");
     print_string("Type something...\n");
     print_string("> ");
+    
     unsigned long last_second = 0;
+    
     while(1) {
         unsigned long uptime = get_uptime();
         if (uptime != last_second) {

@@ -5,20 +5,20 @@
 ![License](https://img.shields.io/badge/license-MIT-blue.svg)
 ![Status](https://img.shields.io/badge/status-alpha-orange.svg)
 ![Architecture](https://img.shields.io/badge/arch-x86-green.svg)
-![Version](https://img.shields.io/badge/version-0.5.0-blue.svg)
+![Version](https://img.shields.io/badge/version-0.6.0-blue.svg)
 
 ## 🚀 Overview
 
 SUB OS is a custom operating system built entirely from scratch without using existing kernels (Linux, Windows, or macOS). The goal is to create the world's smoothest and lag-free operating system within 365 days.
 
-**Current Version:** Alpha v0.5.0  
+**Current Version:** Alpha v0.6.0  
 **Development Started:** November 11, 2025  
-**Current Day:** 5 of 365  
-**Progress:** ~10% complete
+**Current Day:** 6 of 365  
+**Progress:** ~15% complete
 
 ## ✨ Features
 
-### Currently Implemented (Day 5)
+### Currently Implemented (Day 6)
 - ✅ Custom bootloader (x86 Assembly)
 - ✅ 32-bit Protected Mode
 - ✅ Global Descriptor Table (GDT)
@@ -31,13 +31,14 @@ SUB OS is a custom operating system built entirely from scratch without using ex
 - ✅ PIT Timer driver (100 Hz)
 - ✅ System uptime tracking
 - ✅ Memory detection (BIOS E820)
-- ✅ Memory map parsing and display
 - ✅ Physical Memory Manager (bitmap allocator)
-- ✅ **Virtual Memory (Paging)** 🆕
-- ✅ **Page Directory & Page Tables** 🆕
-- ✅ **Identity Mapping** 🆕
+- ✅ Virtual Memory (Paging)
+- ✅ Page Directory & Page Tables
 - ✅ Heap Allocator (kmalloc/kfree)
-- ✅ Modular kernel architecture
+- ✅ **Process Management (PCB)** 🆕
+- ✅ **Round-Robin Scheduler** 🆕
+- ✅ **Task Switching** 🆕
+- ✅ **Multitasking Support** 🆕
 
 ### Roadmap (365 Days)
 - [x] Bootloader ✅
@@ -49,13 +50,14 @@ SUB OS is a custom operating system built entirely from scratch without using ex
 - [x] Physical Memory Manager ✅
 - [x] Virtual Memory (Paging) ✅
 - [x] Heap allocator ✅
-- [ ] Process management
-- [ ] Scheduler
-- [ ] File system
-- [ ] Disk driver
+- [x] Process management ✅
+- [x] Scheduler ✅
 - [ ] System calls
 - [ ] User mode
+- [ ] Disk driver
+- [ ] File system
 - [ ] Shell
+- [ ] Multi-core support
 - [ ] GUI (stretch goal)
 
 ## 🛠️ Building SUB OS
@@ -70,209 +72,199 @@ sudo apt install build-essential nasm qemu-system-x86
 sudo pacman -S base-devel nasm qemu
 
 # macOS
-brew install nasm qemu
-brew install i686-elf-gcc  # Cross-compiler
+brew install nasm qemu i686-elf-gcc
 ```
 
 ### Build and Run
 
 ```bash
-# Clone the repository
+# Clone repository
 git clone https://github.com/subhobhai943/sub-os.git
 cd sub-os
 
-# Build the OS
+# Build
 make
 
-# Run in QEMU emulator
+# Run (128MB RAM)
 make run
 
-# Run with debugging output
+# Debug mode
 make debug
 
-# Clean build files
+# Clean
 make clean
-
-# Show help
-make help
 ```
 
 ## 📁 Project Structure
 
 ```
 sub-os/
-├── boot/                      # Bootloader code
+├── boot/                      # Bootloader
 │   ├── boot.asm              # Main bootloader
-│   ├── gdt.asm               # Global Descriptor Table
-│   ├── disk_load.asm         # Disk reading
-│   ├── memory_detect.asm     # E820 memory detection
-│   ├── print_string.asm      # Real mode printing
-│   ├── print_string_pm.asm   # Protected mode printing
-│   └── switch_to_pm.asm      # Mode switching
-├── kernel/                    # Kernel source code
-│   ├── kernel_entry.asm      # Kernel entry point
+│   ├── gdt.asm               # GDT
+│   ├── disk_load.asm         # Disk I/O
+│   ├── memory_detect.asm     # E820 detection
+│   ├── print_string.asm      # Real mode print
+│   ├── print_string_pm.asm   # Protected mode print
+│   └── switch_to_pm.asm      # Mode switch
+├── kernel/                    # Kernel
+│   ├── kernel_entry.asm      # Entry point
 │   ├── kernel.c              # Main kernel
-│   ├── kernel.h              # Kernel header
+│   ├── kernel.h              # Header
 │   ├── idt.asm               # IDT assembly
 │   ├── isr.asm               # ISR handlers
-│   ├── idt.c                 # IDT C implementation
+│   ├── task_switch.asm       # Task switcher (NEW!)
+│   ├── idt.c                 # IDT implementation
 │   ├── idt.h                 # IDT header
 │   ├── keyboard.c            # Keyboard driver
-│   ├── keyboard.h            # Keyboard header
+│   ├── keyboard.h            # Header
 │   ├── timer.c               # Timer driver
-│   ├── timer.h               # Timer header
+│   ├── timer.h               # Header
 │   ├── memory.c              # Memory detection
-│   ├── memory.h              # Memory header
-│   ├── pmm.c                 # Physical Memory Manager
-│   ├── pmm.h                 # PMM header
-│   ├── paging.c              # Virtual Memory (NEW!)
-│   ├── paging.h              # Paging header (NEW!)
+│   ├── memory.h              # Header
+│   ├── pmm.c                 # Physical memory
+│   ├── pmm.h                 # Header
+│   ├── paging.c              # Virtual memory
+│   ├── paging.h              # Header
 │   ├── heap.c                # Heap allocator
-│   └── heap.h                # Heap header
-├── build/                     # Build output (generated)
+│   ├── heap.h                # Header
+│   ├── process.c             # Process mgmt (NEW!)
+│   ├── process.h             # Header (NEW!)
+│   ├── scheduler.c           # Scheduler (NEW!)
+│   └── (scheduler in process.h)
 ├── Makefile                   # Build system
 ├── linker.ld                  # Linker script
-└── README.md                  # This file
+└── README.md                  # Documentation
 ```
 
 ## 🎯 Design Goals
 
-1. **Performance First**: Minimize overhead and optimize scheduling
-2. **Lag-Free Experience**: Advanced caching and predictive algorithms
-3. **Clean Architecture**: Well-documented, modular code
-4. **Educational**: Serve as a learning resource for OS development
+1. **Performance First**: Minimal context switch overhead
+2. **Lag-Free Experience**: Optimized scheduling
+3. **Clean Architecture**: Modular, documented code
+4. **Educational**: Resource for OS development
 
 ## 🎮 Try It Out!
 
-When you run SUB OS, you'll see:
+When you run SUB OS:
 
-1. **Boot Sequence**: Bootloader initialization
-2. **Memory Detection**: E820 memory map
-3. **Paging Setup**: Virtual memory enabled
-4. **System Information**: Hardware details
-5. **Live Uptime**: Updates every second
-6. **Interactive Input**: Type and see echo
+1. Boot sequence with all subsystems
+2. Memory detection and configuration
+3. Process creation (idle + 2 test processes)
+4. Scheduler activation
+5. Live uptime counter
+6. Interactive keyboard input
 
-### What You Can Do:
-- **Type** and see real-time character echo
-- **Watch** the uptime counter increment
-- **See** detailed memory information
-- **Experience** a fully functional paging system
+### Multitasking in Action:
+- **3 processes** running concurrently
+- **Round-robin scheduling** (50ms quantum)
+- **Context switches** every time slice
+- **Isolated address spaces** (via paging)
 
 ## 📚 Technical Details
 
-### Boot Process
-1. BIOS loads bootloader at 0x7c00
-2. Bootloader detects memory (E820)
-3. Bootloader loads kernel from disk
-4. GDT setup and Protected Mode switch
-5. Jump to kernel at 0x1000
+### Process Management
+- **PCB Structure**: Contains PID, name, state, registers, stacks, page directory
+- **Process Creation**: `process_create()` allocates PCB, stack, initializes context
+- **Process States**: READY, RUNNING, BLOCKED, TERMINATED
+- **Context Switching**: Save all registers, switch page directory, restore registers
 
-### Virtual Memory (Paging)
-- **Page Size**: 4KB (4096 bytes)
-- **Page Directory**: 1024 entries
-- **Page Tables**: 1024 entries each
-- **Identity Mapping**: First 4MB (0x0 - 0x400000)
-- **Heap Mapping**: 1MB heap space (0x400000 - 0x500000)
-- **Page Faults**: Handled with detailed error reporting
+### Scheduler
+- **Algorithm**: Round-Robin (fair time-sharing)
+- **Time Quantum**: 50ms (5 timer ticks at 100 Hz)
+- **Ready Queue**: Linked list of runnable processes
+- **Preemption**: Timer interrupt triggers scheduler
+- **Idle Process**: PID 0, runs when no other process ready
+
+### Task Switching
+- **Assembly Implementation**: Fast register save/restore
+- **Saved State**: EAX, EBX, ECX, EDX, ESI, EDI, ESP, EBP, EIP, EFLAGS, CR3
+- **Page Directory Switch**: Enables per-process virtual memory
+- **Return Path**: Jumps to saved EIP in new process
+
+### Virtual Memory
+- **Page Size**: 4KB
+- **Address Space**: 4GB per process
+- **Kernel Mapping**: Identity mapped (first 4MB)
+- **Heap Space**: Dynamically mapped
+- **Protection**: Page-level read/write/user permissions
 
 ### Memory Management
-**Physical Memory Manager**:
-- Bitmap allocator (1 bit per page)
-- Single page allocation
-- Multi-page contiguous allocation
-- Statistics tracking
+- **Physical**: Bitmap allocator, page-level tracking
+- **Virtual**: Page directory + page tables
+- **Heap**: kmalloc/kfree with coalescing
+- **Statistics**: Real-time usage monitoring
 
-**Virtual Memory**:
-- Page directory at CR3
-- Page tables on-demand
-- Identity mapped kernel
-- Separate address spaces possible
+## 📊 System Capabilities
 
-**Heap Allocator**:
-- Dynamic memory allocation
-- Block coalescing
-- First-fit strategy
-- 64KB initial size
-
-### Interrupt Handling
-- **IDT**: 256-entry table
-- **Exceptions**: 32 CPU exceptions including page faults
-- **IRQs**: 16 hardware interrupts
-  - IRQ0: Timer (PIT)
-  - IRQ1: Keyboard
-  - IRQ14: Page Fault Handler
-- **PIC**: 8259 remapped
-
-### Keyboard Driver
-- PS/2 protocol
-- 256-byte circular buffer
-- US QWERTY layout
-- Special key support
-
-### Timer System
-- PIT configured to 100 Hz
-- IRQ0 interrupt handler
-- Uptime tracking
-- Sleep/wait functions
+✅ Boot from custom bootloader  
+✅ Detect and manage system memory  
+✅ Virtual memory with paging  
+✅ Dynamic memory allocation  
+✅ Hardware interrupt handling  
+✅ Process creation and management  
+✅ Round-robin scheduling  
+✅ **Multitasking** - Multiple processes running  
+✅ Keyboard input and echo  
+✅ System uptime tracking  
+✅ VGA text output with scrolling  
 
 ## 📊 System Requirements
 
 - **CPU**: x86 (32-bit) or x86-64
-- **RAM**: Minimum 1MB (auto-detected)
-- **Disk**: Floppy or HDD with 10KB+ space
+- **RAM**: Minimum 1MB (128MB recommended)
+- **Disk**: 10KB+ space
 - **Display**: VGA text mode (80x25)
 
 ## 📚 Learning Resources
 
 - [OSDev Wiki](https://wiki.osdev.org/)
+- [Process Scheduling](https://wiki.osdev.org/Scheduling_Algorithms)
+- [Context Switching](https://wiki.osdev.org/Context_Switching)
 - [Intel x86 Manual](https://www.intel.com/content/www/us/en/developer/articles/technical/intel-sdm.html)
-- [Paging Tutorial](https://wiki.osdev.org/Paging)
-- [The little book about OS development](https://littleosbook.github.io/)
-- [os-tutorial by Carlos Fenollosa](https://github.com/cfenollosa/os-tutorial)
 
 ## 🤝 Contributing
 
-This is a solo 365-day challenge project, but suggestions and feedback are welcome! Open issues or discussions.
+Solo 365-day challenge project. Suggestions welcome via issues!
 
 ## 📝 License
 
-MIT License - See LICENSE file
+MIT License
 
 ## 👨‍💻 Author
 
 **Subhobhai**  
-PCMB student from West Bengal  
-Building web apps, experimenting with AI, and exploring game development
+PCMB student from West Bengal
 
 ## 📊 Development Log
 
 | Date | Milestone | Status |
 |------|-----------|--------|
-| Nov 11, 2025 | Bootloader, basic kernel | ✅ Complete |
-| Nov 11, 2025 | IDT, interrupts, keyboard | ✅ Complete |
-| Nov 11, 2025 | Timer, memory detection | ✅ Complete |
-| Nov 11, 2025 | PMM, heap allocator | ✅ Complete |
-| Nov 11, 2025 | Virtual memory (paging) | ✅ Complete |
+| Nov 11, 2025 | Bootloader, kernel | ✅ |
+| Nov 11, 2025 | IDT, keyboard | ✅ |
+| Nov 11, 2025 | Timer, memory detection | ✅ |
+| Nov 11, 2025 | PMM, heap | ✅ |
+| Nov 11, 2025 | Virtual memory | ✅ |
+| Nov 11, 2025 | Process management, scheduler | ✅ |
 
-## 🎯 Next Steps (Day 6)
+## 🎯 Next Steps (Day 7)
 
-- Process Control Blocks (PCB)
-- Task switching mechanism
-- Simple round-robin scheduler
-- Multi-tasking foundation
+- System call interface
+- User mode support
+- Fork/exec implementation
+- Inter-process communication
 
-## 📈 Development Statistics
+## 📈 Statistics
 
-- **Days Elapsed**: 5 of 365
-- **Progress**: ~10%
-- **Total Files**: 34
-- **Lines of Code**: ~4,000
-- **Commits**: 24+
-- **Features Implemented**: 19 major systems
+- **Days**: 6 of 365 (~1.6%)
+- **Files**: 38
+- **Lines**: ~5,000
+- **Commits**: 28+
+- **Features**: 22 systems
+- **Phase 1**: ~40% complete
 
 ---
 
-**Status**: Day 5 of 365 - Virtual memory enabled! 🧠💾🚀
+**Status**: Day 6 of 365 - Multitasking enabled! ⚙️🔄🚀
 
-Virtual memory is one of the most complex parts of OS development - congratulations on reaching this milestone!
+SUB OS now supports multiple processes running concurrently - a major milestone in OS development!
