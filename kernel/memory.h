@@ -11,12 +11,12 @@ typedef struct {
     unsigned int length_low;
     unsigned int length_high;
     unsigned int type;
-} memory_map_entry_t;
+} __attribute__((packed)) memory_map_entry_t;
 
 // Initialize memory detection
 void memory_init();
 
 // Get total memory
-unsigned int get_total_memory();
+unsigned long get_total_memory();
 
 #endif
