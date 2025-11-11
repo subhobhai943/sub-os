@@ -31,6 +31,16 @@ unsigned char inb(unsigned short port) {
     return ret;
 }
 
+unsigned short inw(unsigned short port) {
+    unsigned short ret;
+    asm volatile ("inw %1, %0" : "=a"(ret) : "Nd"(port));
+    return ret;
+}
+
+void outw(unsigned short port, unsigned short val) {
+    asm volatile ("outw %0, %1" : : "a"(val), "Nd"(port));
+}
+
 void print_char(char c, int col, int row, char attr) {
     unsigned char *vidmem = (unsigned char*)VIDEO_MEMORY;
     int offset = 2 * (row * MAX_COLS + col);
