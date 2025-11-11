@@ -43,14 +43,7 @@ load_kernel:
     call disk_load
     ret
 
-[bits 32]
-BEGIN_PM:
-    mov ebx, MSG_PROT_MODE
-    call print_string_pm
-    
-    call KERNEL_OFFSET      ; Jump to kernel entry point
-    
-    jmp $
+; Removed conflicting BEGIN_PM definition from boot.asm (now only provided in boot/switch_to_pm.asm)
 
 ; Data
 BOOT_DRIVE      db 0
