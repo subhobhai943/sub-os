@@ -18,5 +18,6 @@ void memory_init();
 
 // Get total memory
 unsigned long get_total_memory();
+unsigned long get_usable_memory();
 
 #endif
