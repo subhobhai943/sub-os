@@ -44,10 +44,20 @@ KERNEL_C_SRC = $(KERNEL_DIR)/kernel.c \
                $(KERNEL_DIR)/ata.c \
                $(KERNEL_DIR)/fs.c
 
+# Print routines and other boot assembly files
+PRINT_ASM_SRC = boot/print_string_pm.asm \
+                boot/print_string.asm \
+                boot/disk_load.asm \
+                boot/gdt.asm \
+                boot/memory_detect.asm \
+                boot/switch_to_pm.asm
+
+PRINT_ASM_OBJ = $(patsubst boot/%.asm, $(BUILD_DIR)/%.o, $(PRINT_ASM_SRC))
+
 # Object files
 KERNEL_ASM_OBJ = $(patsubst $(KERNEL_DIR)/%.asm, $(BUILD_DIR)/%.o, $(KERNEL_ASM_SRC))
 KERNEL_C_OBJ = $(patsubst $(KERNEL_DIR)/%.c, $(BUILD_DIR)/%.o, $(KERNEL_C_SRC))
-KERNEL_OBJ = $(KERNEL_ASM_OBJ) $(KERNEL_C_OBJ)
+KERNEL_OBJ = $(KERNEL_ASM_OBJ) $(KERNEL_C_OBJ) $(PRINT_ASM_OBJ)
 
 .PHONY: all clean run
 
@@ -60,8 +70,11 @@ $(BUILD_DIR):
 $(BOOT_BIN): $(BOOT_ASM) | $(BUILD_DIR)
 	$(ASM) -f bin $< -o $@
 
-# Kernel assembly files as ELF32 object files
+# Kernel and print routines (ELF32 object)
 $(BUILD_DIR)/%.o: $(KERNEL_DIR)/%.asm | $(BUILD_DIR)
+	$(ASM) $(ASM_FLAGS) $< -o $@
+
+$(BUILD_DIR)/%.o: $(BOOT_DIR)/%.asm | $(BUILD_DIR)
 	$(ASM) $(ASM_FLAGS) $< -o $@
 
 $(BUILD_DIR)/%.o: $(KERNEL_DIR)/%.c | $(BUILD_DIR)
