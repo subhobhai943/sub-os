@@ -56,9 +56,11 @@ all: $(OS_IMAGE)
 $(BUILD_DIR):
 	mkdir -p $(BUILD_DIR)
 
+# Boot sector (raw binary, not ELF32!)
 $(BOOT_BIN): $(BOOT_ASM) | $(BUILD_DIR)
-	$(ASM) $(ASM_FLAGS) $< -o $@
+	$(ASM) -f bin $< -o $@
 
+# Kernel assembly files as ELF32 object files
 $(BUILD_DIR)/%.o: $(KERNEL_DIR)/%.asm | $(BUILD_DIR)
 	$(ASM) $(ASM_FLAGS) $< -o $@
 
