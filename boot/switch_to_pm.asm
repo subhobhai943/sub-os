@@ -1,4 +1,5 @@
 [bits 16]
+global BEGIN_PM
 ; Switch to 32-bit Protected Mode
 
 switch_to_pm:
@@ -24,3 +25,7 @@ init_pm:
     mov esp, ebp
     
     call BEGIN_PM              ; Call protected mode entry point
+
+; Provide default BEGIN_PM label to avoid linkage errors
+BEGIN_PM:
+    ret
