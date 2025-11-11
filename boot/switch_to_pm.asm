@@ -1,5 +1,8 @@
 [bits 16]
-global BEGIN_PM
+global gdt_descriptor
+extern gdt_descriptor
+extern CODE_SEG
+extern DATA_SEG
 ; Switch to 32-bit Protected Mode
 
 switch_to_pm:
@@ -26,6 +29,5 @@ init_pm:
     
     call BEGIN_PM              ; Call protected mode entry point
 
-; Provide default BEGIN_PM label to avoid linkage errors
 BEGIN_PM:
     ret
