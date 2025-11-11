@@ -1,4 +1,7 @@
 [bits 16]
+global gdt_descriptor
+CODE_SEG equ 0x08
+DATA_SEG equ 0x10
 ; Global Descriptor Table for Protected Mode
 
 gdt_start:
@@ -28,6 +31,3 @@ gdt_end:
 gdt_descriptor:
     dw gdt_end - gdt_start - 1  ; Size
     dd gdt_start                 ; Address
-
-CODE_SEG equ gdt_code - gdt_start
-DATA_SEG equ gdt_data - gdt_start
