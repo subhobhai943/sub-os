@@ -1,4 +1,5 @@
 [bits 16]
+extern print_string
 ; Load sectors from disk
 ; Input: dh = number of sectors, dl = drive number, bx = destination
 
