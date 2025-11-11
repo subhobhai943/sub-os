@@ -1,4 +1,5 @@
 [bits 16]
+global print_string
 ; Print string in real mode using BIOS interrupts
 ; Input: bx = address of null-terminated string
 
