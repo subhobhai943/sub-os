@@ -1,0 +1,44 @@
+name: Build SUB OS
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v3
+    
+    - name: Install dependencies
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y build-essential nasm qemu-system-x86
+    
+    - name: Build SUB OS
+      run: make
+    
+    - name: Check build artifacts
+      run: |
+        ls -lh build/
+        echo "Bootloader size:"
+        stat -c%s build/boot.bin
+        echo "Kernel size:"
+        stat -c%s build/kernel.bin
+        echo "OS image size:"
+        stat -c%s build/sub_os.bin
+    
+    - name: Upload OS image
+      uses: actions/upload-artifact@v3
+      with:
+        name: sub-os-image
+        path: build/sub_os.bin
+    
+    - name: Quick boot test (headless)
+      run: |
+        timeout 10 qemu-system-i386 -drive format=raw,file=build/sub_os.bin -m 128M -nographic -serial mon:stdio || true
+        echo "Boot test completed"
