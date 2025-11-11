@@ -48,7 +48,6 @@ void pic_remap() {
 
 void idt_init() {
     pic_remap();
-    
     // Set up exception handlers (0-31)
     idt_set_gate(0, (unsigned long)isr0, 0x08, 0x8E);
     idt_set_gate(1, (unsigned long)isr1, 0x08, 0x8E);
@@ -82,7 +81,6 @@ void idt_init() {
     idt_set_gate(29, (unsigned long)isr29, 0x08, 0x8E);
     idt_set_gate(30, (unsigned long)isr30, 0x08, 0x8E);
     idt_set_gate(31, (unsigned long)isr31, 0x08, 0x8E);
-    
     // Set up IRQ handlers (32-47)
     idt_set_gate(32, (unsigned long)irq0, 0x08, 0x8E);
     idt_set_gate(33, (unsigned long)irq1, 0x08, 0x8E);
@@ -100,11 +98,8 @@ void idt_init() {
     idt_set_gate(45, (unsigned long)irq13, 0x08, 0x8E);
     idt_set_gate(46, (unsigned long)irq14, 0x08, 0x8E);
     idt_set_gate(47, (unsigned long)irq15, 0x08, 0x8E);
-    
     // Set up system call handler (INT 0x80)
-    // DPL=3 (user mode can call), 0xEE = 11101110
     idt_set_gate(0x80, (unsigned long)syscall_entry, 0x08, 0xEE);
-    
     idt_load();
 }
 
@@ -115,7 +110,6 @@ void isr_handler(unsigned int int_no, unsigned int err_code) {
         page_fault(err_code, faulting_address);
         return;
     }
-    
     print_string("\n[EXCEPTION] ");
     print_string(exception_messages[int_no]);
     print_string(" (");
@@ -125,13 +119,9 @@ void isr_handler(unsigned int int_no, unsigned int err_code) {
     print_hex(err_code);
     print_string("\n");
     print_string("System halted.\n");
-    
     for(;;);
 }
 
-void irq_handler(unsigned int irq_no, unsigned int err_code) {
-    if (irq_no >= 40) {
-        outb(0xA0, 0x20);
-    }
-    outb(0x20, 0x20);
-}
+// Remove duplicate IRQ handler to fix multiple definition error.
+// Declaration only (if needed):
+// extern void irq_handler(unsigned int irq_no, unsigned int err_code);
