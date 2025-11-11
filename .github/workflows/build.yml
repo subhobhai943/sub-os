@@ -33,7 +33,7 @@ jobs:
         stat -c%s build/sub_os.bin
     
     - name: Upload OS image
-      uses: actions/upload-artifact@v3
+      uses: actions/upload-artifact@v4
       with:
         name: sub-os-image
         path: build/sub_os.bin
