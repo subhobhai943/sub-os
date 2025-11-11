@@ -17,6 +17,6 @@ unsigned long timer_get_ticks();
 unsigned long get_uptime();
 
 // Sleep for milliseconds
-void sleep_ms(unsigned int ms);
+void sleep_ms(unsigned long ms);
 
 #endif
