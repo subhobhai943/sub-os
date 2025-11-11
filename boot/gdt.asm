@@ -2,8 +2,6 @@
 global gdt_descriptor
 CODE_SEG equ 0x08
 DATA_SEG equ 0x10
-global gdt_start
-extern gdt_start
 ; Global Descriptor Table for Protected Mode
 
 gdt_start:
