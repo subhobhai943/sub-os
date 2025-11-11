@@ -1,4 +1,5 @@
 [bits 32]
+global print_string_pm
 ; Print string in protected mode (VGA text mode)
 ; Input: ebx = address of null-terminated string
 
