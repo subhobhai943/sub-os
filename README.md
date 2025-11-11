@@ -6,6 +6,8 @@
 ![Status](https://img.shields.io/badge/status-alpha-orange.svg)
 ![Architecture](https://img.shields.io/badge/arch-x86-green.svg)
 ![Version](https://img.shields.io/badge/version-0.9.0-blue.svg)
+![Build](https://github.com/subhobhai943/sub-os/actions/workflows/build.yml/badge.svg)
+![Test](https://github.com/subhobhai943/sub-os/actions/workflows/test.yml/badge.svg)
 
 ## 🚀 Overview
 
@@ -56,23 +58,64 @@ SUB OS is a custom operating system built entirely from scratch in just 9 days! 
 - ✅ LBA28 addressing (128GB)
 - ✅ Up to 4 drives support
 
+## 🔨 CI/CD Pipeline
+
+SUB OS uses GitHub Actions for continuous integration:
+
+- **Build Workflow**: Automatically compiles the OS on every push
+- **Test Workflow**: Validates compilation, binary sizes, and boot tests
+- **QEMU Testing**: Boots OS in emulator to verify functionality
+- **Artifacts**: Successfully built OS images available for download
+
+### Build Status
+
+Click the badges above to see latest build results. The CI pipeline:
+1. ✅ Compiles bootloader (NASM)
+2. ✅ Compiles all kernel modules (GCC)
+3. ✅ Links kernel binary
+4. ✅ Creates final OS image
+5. ✅ Validates bootloader size ≤ 512 bytes
+6. ✅ Boot tests in QEMU
+7. ✅ Uploads build artifacts
+
 ## 🛠️ Building
 
+### Requirements
+- **OS**: Ubuntu 20.04+ (or compatible Linux)
+- **Compiler**: GCC with 32-bit support
+- **Assembler**: NASM
+- **Emulator**: QEMU (for testing)
+
+### Build Commands
+
 ```bash
+# Install dependencies (Ubuntu/Debian)
+sudo apt-get install build-essential nasm qemu-system-x86
+
+# Clone and build
 git clone https://github.com/subhobhai943/sub-os.git
 cd sub-os
 make
+
+# Run in QEMU (128MB RAM)
 make run
+
+# Debug mode
+make debug
+
+# Clean build
+make clean
 ```
 
 ## 📊 Statistics
 
 - **Development Time**: 9 days
-- **Total Files**: 52
+- **Total Files**: 54
 - **Lines of Code**: ~7,500
-- **Commits**: 40+
+- **Commits**: 42+
 - **Major Systems**: 27
 - **Phase 2 Progress**: 10%
+- **CI/CD**: Automated testing enabled
 
 ## 🏆 Milestones
 
@@ -86,6 +129,7 @@ make run
 | 7 | System Calls | ✅ |
 | 8 | User Mode, TSS | ✅ |
 | 9 | ATA/IDE Disk Driver | ✅ |
+| - | CI/CD Pipeline | ✅ |
 
 ## 🎯 What's Next (Day 10+)
 
@@ -95,8 +139,17 @@ make run
 - Directory management
 - Simple shell
 
+## 📝 License
+
+MIT License
+
+## 👨‍💻 Author
+
+**Subhobhai**  
+PCMB student from West Bengal
+
 ---
 
-**Status**: Day 9 Complete - Disk I/O Working! 💾⚙️🚀
+**Status**: Day 9 Complete - Disk I/O + CI/CD Working! 💾⚙️🚀
 
-**Achievement**: Built a complete OS with disk I/O in 9 days!
+**Achievement**: Built a complete OS with disk I/O and automated testing in 9 days!
