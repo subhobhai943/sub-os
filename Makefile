@@ -36,6 +36,7 @@ PROCESS_C_SRC = $(KERNEL_DIR)/process.c
 SCHEDULER_C_SRC = $(KERNEL_DIR)/scheduler.c
 SYSCALL_C_SRC = $(KERNEL_DIR)/syscall.c
 TSS_C_SRC = $(KERNEL_DIR)/tss.c
+ATA_C_SRC = $(KERNEL_DIR)/ata.c
 
 KERNEL_ENTRY_OBJ = $(BUILD_DIR)/kernel_entry.o
 KERNEL_OBJ = $(BUILD_DIR)/kernel.o
@@ -56,12 +57,13 @@ PROCESS_OBJ = $(BUILD_DIR)/process.o
 SCHEDULER_OBJ = $(BUILD_DIR)/scheduler.o
 SYSCALL_OBJ = $(BUILD_DIR)/syscall.o
 TSS_OBJ = $(BUILD_DIR)/tss.o
+ATA_OBJ = $(BUILD_DIR)/ata.o
 
 OBJS = $(KERNEL_ENTRY_OBJ) $(KERNEL_OBJ) $(IDT_ASM_OBJ) $(ISR_ASM_OBJ) \
        $(TASK_SWITCH_OBJ) $(SYSCALL_ENTRY_OBJ) $(TSS_ASM_OBJ) $(USERMODE_ASM_OBJ) \
        $(IDT_OBJ) $(KEYBOARD_OBJ) $(TIMER_OBJ) $(MEMORY_OBJ) $(PMM_OBJ) \
        $(HEAP_OBJ) $(PAGING_OBJ) $(PROCESS_OBJ) $(SCHEDULER_OBJ) \
-       $(SYSCALL_OBJ) $(TSS_OBJ)
+       $(SYSCALL_OBJ) $(TSS_OBJ) $(ATA_OBJ)
 
 all: $(OS_IMAGE)
 
@@ -148,6 +150,10 @@ $(TSS_OBJ): $(TSS_C_SRC) | $(BUILD_DIR)
 	@echo "Building TSS..."
 	$(CC) $(CC_FLAGS) $(TSS_C_SRC) -o $(TSS_OBJ)
 
+$(ATA_OBJ): $(ATA_C_SRC) | $(BUILD_DIR)
+	@echo "Building ATA driver..."
+	$(CC) $(CC_FLAGS) $(ATA_C_SRC) -o $(ATA_OBJ)
+
 $(KERNEL_BIN): $(OBJS) | $(BUILD_DIR)
 	@echo "Linking kernel..."
 	$(LD) $(LD_FLAGS) -o $(KERNEL_BIN) $(OBJS)
@@ -157,31 +163,31 @@ $(OS_IMAGE): $(BOOT_BIN) $(KERNEL_BIN)
 	cat $(BOOT_BIN) $(KERNEL_BIN) > $(OS_IMAGE)
 	@echo ""
 	@echo "==========================================="
-	@echo "  SUB OS v0.8.0 Build Complete!"
+	@echo "  SUB OS v0.9.0 Build Complete!"
 	@echo "==========================================="
 	@echo "Image: $(OS_IMAGE)"
 	@echo "Size: $$(stat -f%z $(OS_IMAGE) 2>/dev/null || stat -c%s $(OS_IMAGE)) bytes"
 	@echo ""
-	@echo "Day 8 Features:"
-	@echo "  - User Mode (Ring 3)"
-	@echo "  - Task State Segment (TSS)"
-	@echo "  - Privilege Transitions"
-	@echo "  - User Mode Syscalls"
+	@echo "Day 9 Features:"
+	@echo "  - ATA/IDE Disk Driver"
+	@echo "  - PIO Mode Read/Write"
+	@echo "  - Disk Detection"
+	@echo "  - Sector I/O"
 	@echo ""
-	@echo "Total: 26 major systems"
+	@echo "Total: 27 major systems"
 	@echo "Run with: make run"
 	@echo "==========================================="
 
 run: $(OS_IMAGE)
 	@echo ""
-	@echo "Starting SUB OS v0.8.0..."
-	@echo "User mode enabled!"
+	@echo "Starting SUB OS v0.9.0..."
+	@echo "Disk I/O enabled!"
 	@echo ""
 	qemu-system-i386 -drive format=raw,file=$(OS_IMAGE) -m 128M
 
 debug: $(OS_IMAGE)
 	@echo ""
-	@echo "Starting SUB OS v0.8.0 (Debug Mode)..."
+	@echo "Starting SUB OS v0.9.0 (Debug Mode)..."
 	@echo ""
 	qemu-system-i386 -drive format=raw,file=$(OS_IMAGE) -m 128M -serial stdio
 
@@ -190,7 +196,7 @@ clean:
 	@echo "Build directory cleaned"
 
 help:
-	@echo "SUB OS Build System - v0.8.0"
+	@echo "SUB OS Build System - v0.9.0"
 	@echo ""
 	@echo "Targets:"
 	@echo "  make         - Build SUB OS"
