@@ -22,7 +22,7 @@ void timer_init();
 void timer_handler();
 unsigned long timer_get_ticks();
 unsigned long get_uptime();
-void sleep_ms(unsigned int ms);
+void sleep_ms(unsigned long ms);
 
 // Keyboard
 void keyboard_init();
