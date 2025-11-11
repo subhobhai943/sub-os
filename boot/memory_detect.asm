@@ -1,4 +1,5 @@
 [bits 16]
+extern print_string
 ; Memory detection using BIOS INT 0x15, EAX=0xE820
 ; Store memory map at 0x5000
 
