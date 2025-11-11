@@ -1,4 +1,4 @@
-// SUB OS - Keyboard Driver Header
+// SUB OS - Keyboard Header
 // Copyright (c) 2025 SUB OS Project
 
 #ifndef KEYBOARD_H
@@ -7,12 +7,10 @@
 // Initialize keyboard driver
 void keyboard_init();
 
-// Keyboard interrupt handler
+// Keyboard IRQ handler
 void keyboard_handler();
 
-// Buffer functions
-void keyboard_buffer_add(char c);
-char keyboard_buffer_get();
-int keyboard_buffer_has_data();
+// Read character from keyboard buffer
+char keyboard_getchar();
 
 #endif

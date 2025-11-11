@@ -1,14 +1,22 @@
-// SUB OS - Memory Manager Header
+// SUB OS - Memory Detection Header
 // Copyright (c) 2025 SUB OS Project
 
 #ifndef MEMORY_H
 #define MEMORY_H
 
-// Initialize memory manager
+// Memory map entry structure
+typedef struct {
+    unsigned int base_low;
+    unsigned int base_high;
+    unsigned int length_low;
+    unsigned int length_high;
+    unsigned int type;
+} memory_map_entry_t;
+
+// Initialize memory detection
 void memory_init();
 
-// Get memory information
-unsigned long get_total_memory();
-unsigned long get_usable_memory();
+// Get total memory
+unsigned int get_total_memory();
 
 #endif

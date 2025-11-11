@@ -1,23 +1,22 @@
-// SUB OS - Timer Driver Header
+// SUB OS - Timer Header
 // Copyright (c) 2025 SUB OS Project
 
 #ifndef TIMER_H
 #define TIMER_H
 
-// Initialize timer
+// Initialize PIT timer
 void timer_init();
 
-// Timer interrupt handler
+// Timer IRQ handler
 void timer_handler();
 
-// Get current tick count
+// Get timer ticks
 unsigned long timer_get_ticks();
 
-// Wait functions
-void timer_wait(unsigned long ticks);
-void sleep_ms(unsigned long ms);
-
-// Get system uptime
+// Get uptime in seconds
 unsigned long get_uptime();
+
+// Sleep for milliseconds
+void sleep_ms(unsigned int ms);
 
 #endif
