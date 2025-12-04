@@ -1,5 +1,4 @@
 [bits 16]
-global gdt_descriptor
 extern gdt_descriptor
 ; Switch to 32-bit Protected Mode
 
