@@ -4,6 +4,8 @@
 #include "idt.h"
 #include "kernel.h"
 #include "paging.h"
+#include "timer.h"
+#include "keyboard.h"
 
 extern void idt_load();
 extern void idt_set_gate(unsigned char num, unsigned long base, unsigned short sel, unsigned char flags);
@@ -122,6 +124,26 @@ void isr_handler(unsigned int int_no, unsigned int err_code) {
     for(;;);
 }
 
-// Remove duplicate IRQ handler to fix multiple definition error.
-// Declaration only (if needed):
-// extern void irq_handler(unsigned int irq_no, unsigned int err_code);
+// IRQ handler - dispatches hardware interrupts to appropriate handlers
+void irq_handler(unsigned int irq_no, unsigned int err_code) {
+    // Dispatch to specific IRQ handlers
+    switch(irq_no) {
+        case 32:  // IRQ0 - Timer
+            timer_handler();
+            break;
+        case 33:  // IRQ1 - Keyboard
+            keyboard_handler();
+            break;
+        default:
+            // Unhandled IRQ
+            break;
+    }
+    
+    // Send EOI (End of Interrupt) to PIC
+    if (irq_no >= 40) {
+        // Send EOI to slave PIC for IRQ8-15
+        outb(0xA0, 0x20);
+    }
+    // Always send EOI to master PIC
+    outb(0x20, 0x20);
+}
