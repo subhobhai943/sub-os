@@ -46,7 +46,6 @@ KERNEL_C_SRC = $(KERNEL_DIR)/kernel.c \
 
 # Print routines and other boot assembly files
 PRINT_ASM_SRC = boot/print_string_pm.asm \
-                boot/print_string.asm \
                 boot/disk_load.asm \
                 boot/gdt.asm \
                 boot/memory_detect.asm \
