@@ -1,5 +1,5 @@
 [bits 32]
-[extern main]              ; Main C function
+[extern kernel_main]       ; Main C kernel function
 
-call main                  ; Call kernel main function
+call kernel_main           ; Call kernel main function
 jmp $                      ; Hang if kernel returns
