@@ -122,6 +122,13 @@ void isr_handler(unsigned int int_no, unsigned int err_code) {
     for(;;);
 }
 
-// Remove duplicate IRQ handler to fix multiple definition error.
-// Declaration only (if needed):
-// extern void irq_handler(unsigned int irq_no, unsigned int err_code);
+void irq_handler(unsigned int irq_no, unsigned int err_code) {
+    // Send EOI (End of Interrupt) signal to PIC
+    if (irq_no >= 40) {
+        outb(0xA0, 0x20);  // Send EOI to slave PIC
+    }
+    outb(0x20, 0x20);      // Send EOI to master PIC
+    
+    // Handle specific IRQs here if needed
+    // For now, just acknowledge the interrupt
+}
