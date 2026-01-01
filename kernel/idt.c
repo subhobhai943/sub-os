@@ -146,4 +146,13 @@ void irq_handler(unsigned int irq_no, unsigned int err_code) {
     }
     // Always send EOI to master PIC
     outb(0x20, 0x20);
+void irq_handler(unsigned int irq_no, unsigned int err_code) {
+    // Send EOI (End of Interrupt) signal to PIC
+    if (irq_no >= 40) {
+        outb(0xA0, 0x20);  // Send EOI to slave PIC
+    }
+    outb(0x20, 0x20);      // Send EOI to master PIC
+    
+    // Handle specific IRQs here if needed
+    // For now, just acknowledge the interrupt
 }

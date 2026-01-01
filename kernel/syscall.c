@@ -77,6 +77,9 @@ int sys_fork() {
 
 // sys_read - Read from file descriptor (stub)
 int sys_read(int fd, void* buf, unsigned int count) {
+    (void)fd;     // Mark unused
+    (void)buf;    // Mark unused
+    (void)count;  // Mark unused
     print_string("[SYSCALL] read() not yet implemented\n");
     return SYSCALL_ERROR;
 }
