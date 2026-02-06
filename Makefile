@@ -15,6 +15,9 @@ BUILD_DIR = build
 BOOT_BIN = $(BUILD_DIR)/boot.bin
 KERNEL_BIN = $(BUILD_DIR)/kernel.bin
 OS_IMAGE = $(BUILD_DIR)/sub_os.bin
+OS_FLOPPY = $(BUILD_DIR)/sub_os.img
+OS_ISO = $(BUILD_DIR)/sub_os.iso
+ISO_ROOT = $(BUILD_DIR)/iso_root
 
 # Boot assembly files
 BOOT_ASM = $(BOOT_DIR)/boot.asm
@@ -58,9 +61,9 @@ KERNEL_ASM_OBJ = $(patsubst $(KERNEL_DIR)/%.asm, $(BUILD_DIR)/%.o, $(KERNEL_ASM_
 KERNEL_C_OBJ = $(patsubst $(KERNEL_DIR)/%.c, $(BUILD_DIR)/%.o, $(KERNEL_C_SRC))
 KERNEL_OBJ = $(KERNEL_ASM_OBJ) $(KERNEL_C_OBJ) $(PRINT_ASM_OBJ)
 
-.PHONY: all clean run
+.PHONY: all clean run iso
 
-all: $(OS_IMAGE)
+all: $(OS_IMAGE) $(OS_FLOPPY) $(OS_ISO)
 
 $(BUILD_DIR):
 	mkdir -p $(BUILD_DIR)
@@ -84,6 +87,17 @@ $(KERNEL_BIN): $(KERNEL_OBJ)
 
 $(OS_IMAGE): $(BOOT_BIN) $(KERNEL_BIN)
 	cat $^ > $@
+
+$(OS_FLOPPY): $(OS_IMAGE)
+	dd if=/dev/zero of=$@ bs=512 count=2880
+	dd if=$(OS_IMAGE) of=$@ conv=notrunc
+
+$(OS_ISO): $(OS_FLOPPY)
+	mkdir -p $(ISO_ROOT)
+	cp $(OS_FLOPPY) $(ISO_ROOT)/sub_os.img
+	xorriso -as mkisofs -R -J -o $@ -b sub_os.img -boot-load-size 2880 -boot-info-table $(ISO_ROOT)
+
+iso: $(OS_ISO)
 
 clean:
 	rm -rf $(BUILD_DIR)

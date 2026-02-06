@@ -17,7 +17,7 @@ jobs:
     - name: Install dependencies
       run: |
         sudo apt-get update
-        sudo apt-get install -y build-essential nasm qemu-system-x86
+        sudo apt-get install -y build-essential nasm qemu-system-x86 xorriso
     
     - name: Build SUB OS
       run: make
@@ -31,12 +31,16 @@ jobs:
         stat -c%s build/kernel.bin
         echo "OS image size:"
         stat -c%s build/sub_os.bin
+        echo "Floppy image size:"
+        stat -c%s build/sub_os.img
+        echo "OS ISO size:"
+        stat -c%s build/sub_os.iso
     
-    - name: Upload OS image
+    - name: Upload OS ISO
       uses: actions/upload-artifact@v4
       with:
-        name: sub-os-image
-        path: build/sub_os.bin
+        name: sub-os-iso
+        path: build/sub_os.iso
     
     - name: Quick boot test (headless)
       run: |
