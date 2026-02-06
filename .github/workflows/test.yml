@@ -17,7 +17,7 @@ jobs:
     - name: Install build tools
       run: |
         sudo apt-get update
-        sudo apt-get install -y build-essential nasm
+        sudo apt-get install -y build-essential nasm xorriso
     
     - name: Clean build
       run: make clean || true
@@ -33,7 +33,7 @@ jobs:
     
     - name: Check for compilation errors
       run: |
-        if [ -f build/sub_os.bin ]; then
+        if [ -f build/sub_os.bin ] && [ -f build/sub_os.img ] && [ -f build/sub_os.iso ]; then
           echo "✓ Build successful!"
           exit 0
         else
@@ -48,7 +48,7 @@ jobs:
     
     steps:
     - uses: actions/checkout@v3
-    - run: sudo apt-get update && sudo apt-get install -y build-essential nasm
+    - run: sudo apt-get update && sudo apt-get install -y build-essential nasm xorriso
     - run: make
     
     - name: Check binary sizes
@@ -57,6 +57,8 @@ jobs:
         echo "Bootloader: $(stat -c%s build/boot.bin) bytes (max 512)"
         echo "Kernel: $(stat -c%s build/kernel.bin) bytes"
         echo "Total OS: $(stat -c%s build/sub_os.bin) bytes"
+        echo "Floppy image: $(stat -c%s build/sub_os.img) bytes"
+        echo "ISO image: $(stat -c%s build/sub_os.iso) bytes"
         
         BOOT_SIZE=$(stat -c%s build/boot.bin)
         if [ $BOOT_SIZE -gt 512 ]; then
@@ -72,7 +74,7 @@ jobs:
     
     steps:
     - uses: actions/checkout@v3
-    - run: sudo apt-get update && sudo apt-get install -y build-essential nasm qemu-system-x86
+    - run: sudo apt-get update && sudo apt-get install -y build-essential nasm qemu-system-x86 xorriso
     - run: make
     
     - name: Boot test
