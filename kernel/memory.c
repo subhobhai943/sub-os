@@ -15,7 +15,7 @@ static unsigned long usable_memory = 0;
 static unsigned long reserved_memory = 0;
 
 // Memory map entry count
-static unsigned int memory_map_entries = 0;
+static unsigned int __attribute__((unused)) memory_map_entries = 0;
 
 // Memory types
 const char* memory_type_names[] = {
@@ -34,6 +34,13 @@ const char* get_memory_type_name(unsigned int type) {
 
 void memory_init() {
     print_string("[OK] Detecting memory...\n");
+#ifdef __arm__
+    // Hardcoded memory for ARM (128MB)
+    total_memory = 128 * 1024 * 1024;
+    usable_memory = 128 * 1024 * 1024;
+    
+    print_string("  ARM Memory: 128 MB\n");
+#else
     memory_map_entry_t* entries = (memory_map_entry_t*)MEMORY_MAP_ADDR;
     memory_map_entries = *(unsigned short*)(MEMORY_MAP_ADDR + 24 * 100);
     if (memory_map_entries == 0) {
@@ -64,6 +71,7 @@ void memory_init() {
             reserved_memory += length;
         }
     }
+#endif
     print_string("\nMemory Summary:\n");
     print_string("  Total: ");
     print_hex(total_memory / 1024);

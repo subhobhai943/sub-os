@@ -1,6 +1,6 @@
 /* SUB OS Linker Script */
 
-ENTRY(main)
+ENTRY(_start)
 
 SECTIONS
 {

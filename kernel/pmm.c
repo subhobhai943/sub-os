@@ -11,7 +11,11 @@
 
 // Bitmap for tracking page allocation
 // Each bit represents one 4KB page
+#ifdef __arm__
+static unsigned char* page_bitmap; 
+#else
 static unsigned char* page_bitmap = (unsigned char*)0x10000; // Bitmap at 1MB
+#endif
 static unsigned int total_pages = 0;
 static unsigned int used_pages = 0;
 static unsigned int bitmap_size = 0;
@@ -22,6 +26,11 @@ extern unsigned int kernel_end;
 // Initialize physical memory manager
 void pmm_init() {
     print_string("[OK] Initializing Physical Memory Manager...\n");
+    
+#ifdef __arm__
+    // Place bitmap after kernel
+    page_bitmap = (unsigned char*)((unsigned int)&kernel_end + 0x1000);
+#endif
     
     // Get usable memory from memory detection
     unsigned long usable_mem = get_usable_memory();

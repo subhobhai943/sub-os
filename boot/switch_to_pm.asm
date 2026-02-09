@@ -22,4 +22,4 @@ init_pm:
     mov esp, ebp
     call BEGIN_PM              ; Call protected mode entry point
 BEGIN_PM:
-    ret
+    jmp KERNEL_OFFSET          ; Jump to loaded kernel

@@ -2,6 +2,13 @@
 // Copyright (c) 2025 SUB OS Project
 
 #include "kernel.h"
+
+#if defined(__aarch64__) || defined(__arm__)
+#include "uart.h"
+#include "memory.h"
+#include "pmm.h"
+#include "heap.h"
+#else
 #include "idt.h"
 #include "keyboard.h"
 #include "timer.h"
@@ -14,6 +21,7 @@
 #include "tss.h"
 #include "ata.h"
 #include "fs.h"
+#endif
 
 #define VIDEO_MEMORY 0xb8000
 #define MAX_ROWS 25
@@ -23,6 +31,7 @@
 int cursor_row = 0;
 int cursor_col = 0;
 
+#if !defined(__aarch64__) && !defined(__arm__)
 void outb(unsigned short port, unsigned char val) { 
     asm volatile ("outb %0, %1" : : "a"(val), "Nd"(port)); 
 }
@@ -42,8 +51,12 @@ unsigned short inw(unsigned short port) {
 void outw(unsigned short port, unsigned short val) { 
     asm volatile ("outw %0, %1" : : "a"(val), "Nd"(port)); 
 }
+#endif
 
 void clear_screen() {
+#if defined(__aarch64__) || defined(__arm__)
+    uart_puts("\033[2J\033[H"); // ANSI clear screen
+#else
     char *video = (char *)VIDEO_MEMORY;
     for (int i = 0; i < MAX_ROWS * MAX_COLS; i++) {
         video[i * 2] = ' ';
@@ -51,9 +64,14 @@ void clear_screen() {
     }
     cursor_row = 0;
     cursor_col = 0;
+#endif
 }
 
 void print_char(char c, int col, int row, char attr) {
+#if defined(__aarch64__) || defined(__arm__)
+    uart_putc(c);
+    (void)col; (void)row; (void)attr;
+#else
     char *video = (char *)VIDEO_MEMORY;
     if (!attr) attr = WHITE_ON_BLACK;
     
@@ -92,12 +110,17 @@ void print_char(char c, int col, int row, char attr) {
         }
         cursor_row = MAX_ROWS - 1;
     }
+#endif
 }
 
 void print_string(const char *str) {
+#if defined(__aarch64__) || defined(__arm__)
+    uart_puts(str);
+#else
     for (int i = 0; str[i] != 0; i++) {
         print_char(str[i], -1, -1, WHITE_ON_BLACK);
     }
+#endif
 }
 
 void print_hex(unsigned int num) {
@@ -139,6 +162,7 @@ void kernel_main() {
     print_string("     SUB OS v0.10.0 Booting...    \n");
     print_string("===================================\n\n");
     
+#if !defined(__aarch64__) && !defined(__arm__)
     print_string("[OK] Initializing IDT...\n");
     idt_init();
     
@@ -178,6 +202,25 @@ void kernel_main() {
     } else {
         print_string("[WARN] Filesystem mount failed\n");
     }
+#else
+    print_string("[OK] ARM Architecture Detected.\n");
+    print_string("[OK] UART Initialized (PL011).\n");
+    print_string("[INFO] Skipped x86-specific initialization.\n");
+    
+    memory_init();
+    pmm_init();
+    heap_init();
+    
+    void* ptr = kmalloc(128);
+    if(ptr) {
+        print_string("[OK] Heap Allocation Test Passed: ");
+        print_hex((unsigned int)ptr);
+        print_string("\n");
+        kfree(ptr);
+    } else {
+        print_string("[FAIL] Heap Allocation Test Failed\n");
+    }
+#endif
     
     print_string("\n===================================\n");
     print_string("   SUB OS v0.10.0 Ready!          \n");
@@ -186,6 +229,10 @@ void kernel_main() {
     print_string("Type commands...\n\n");
     
     while (1) {
+#if defined(__aarch64__) || defined(__arm__)
+        asm volatile("wfi");
+#else
         asm volatile("hlt");
+#endif
     }
 }
