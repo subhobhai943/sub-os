@@ -2,9 +2,9 @@ name: Build SUB OS
 
 on:
   push:
-    branches: [ main ]
+    branches: [ main, arm-port ]
   pull_request:
-    branches: [ main ]
+    branches: [ main, arm-port ]
 
 jobs:
   build:
@@ -45,4 +45,36 @@ jobs:
     - name: Quick boot test (headless)
       run: |
         timeout 10 qemu-system-i386 -drive format=raw,file=build/sub_os.bin -m 128M -nographic -serial mon:stdio || true
+        echo "Boot test completed"
+
+  build-arm:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v3
+    
+    - name: Install dependencies
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y build-essential gcc-arm-none-eabi qemu-system-arm
+    
+    - name: Build SUB OS (ARM)
+      run: make TARGET_ARCH=arm CC=arm-none-eabi-gcc LD=arm-none-eabi-ld ASM=arm-none-eabi-as
+    
+    - name: Check build artifacts
+      run: |
+        ls -lh build/
+        echo "OS ELF size:"
+        stat -c%s build/sub_os.elf
+    
+    - name: Upload OS ELF
+      uses: actions/upload-artifact@v4
+      with:
+        name: sub-os-arm-elf
+        path: build/sub_os.elf
+
+    - name: Quick boot test (headless)
+      run: |
+        timeout 10 qemu-system-arm -M virt -cpu cortex-a15 -nographic -kernel build/sub_os.elf || true
         echo "Boot test completed"

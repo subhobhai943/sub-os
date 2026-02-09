@@ -2,9 +2,9 @@ name: Test SUB OS
 
 on:
   push:
-    branches: [ main ]
+    branches: [ main, arm-port ]
   pull_request:
-    branches: [ main ]
+    branches: [ main, arm-port ]
 
 jobs:
   compile-test:
@@ -34,6 +34,34 @@ jobs:
     - name: Check for compilation errors
       run: |
         if [ -f build/sub_os.bin ] && [ -f build/sub_os.img ] && [ -f build/sub_os.iso ]; then
+          echo "✓ Build successful!"
+          exit 0
+        else
+          echo "✗ Build failed"
+          exit 1
+        fi
+
+  compile-test-arm:
+    name: Compilation Test (ARM)
+    runs-on: ubuntu-latest
+    
+    steps:
+    - uses: actions/checkout@v3
+    
+    - name: Install build tools
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y build-essential gcc-arm-none-eabi
+    
+    - name: Clean build
+      run: make clean || true
+    
+    - name: Build
+      run: make TARGET_ARCH=arm CC=arm-none-eabi-gcc LD=arm-none-eabi-ld ASM=arm-none-eabi-as
+    
+    - name: Check for compilation errors
+      run: |
+        if [ -f build/sub_os.elf ]; then
           echo "✓ Build successful!"
           exit 0
         else
@@ -85,6 +113,35 @@ jobs:
           -m 128M \
           -nographic \
           -serial file:boot.log \
+          || true
+        
+        echo "=== Boot Log ==="
+        cat boot.log || echo "No boot log generated"
+        
+        if grep -q "SUB OS" boot.log; then
+          echo "✓ OS booted successfully!"
+        else
+          echo "⚠ Boot may have issues"
+        fi
+
+  qemu-test-arm:
+    name: QEMU Boot Test (ARM)
+    runs-on: ubuntu-latest
+    needs: compile-test-arm
+    
+    steps:
+    - uses: actions/checkout@v3
+    - run: sudo apt-get update && sudo apt-get install -y build-essential gcc-arm-none-eabi qemu-system-arm
+    - run: make TARGET_ARCH=arm CC=arm-none-eabi-gcc LD=arm-none-eabi-ld ASM=arm-none-eabi-as
+    
+    - name: Boot test
+      run: |
+        echo "Testing OS boot in QEMU (ARM)..."
+        timeout 15 qemu-system-arm \
+          -M virt -cpu cortex-a15 \
+          -nographic \
+          -kernel build/sub_os.elf \
+          > boot.log 2>&1 \
           || true
         
         echo "=== Boot Log ==="
