@@ -34,7 +34,11 @@ ifeq ($(TARGET_ARCH),arm)
                    $(KERNEL_DIR)/uart.c \
                    $(KERNEL_DIR)/memory.c \
                    $(KERNEL_DIR)/pmm.c \
-                   $(KERNEL_DIR)/heap.c
+                   $(KERNEL_DIR)/heap.c \
+                   $(KERNEL_DIR)/keyboard.c \
+                   $(KERNEL_DIR)/ata.c \
+                   $(KERNEL_DIR)/fs.c \
+                   $(KERNEL_DIR)/shell.c
     
     # ARM Objects
     KERNEL_OBJ = $(BUILD_DIR)/start.o \
@@ -89,7 +93,8 @@ else
                    $(KERNEL_DIR)/syscall.c \
                    $(KERNEL_DIR)/tss.c \
                    $(KERNEL_DIR)/ata.c \
-                   $(KERNEL_DIR)/fs.c
+                   $(KERNEL_DIR)/fs.c \
+                   $(KERNEL_DIR)/shell.c
 
     # Print routines and other boot assembly files
     PRINT_ASM_SRC = boot/print_string_pm.asm \

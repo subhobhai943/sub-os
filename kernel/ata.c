@@ -4,12 +4,38 @@
 #include "ata.h"
 #include "kernel.h"
 
+#if defined(__aarch64__) || defined(__arm__)
+// ARM Dummy Implementation
+void ata_init() {
+    print_string("[INFO] ATA Driver not supported on ARM yet.\n");
+}
+int ata_read_sectors(unsigned char drive, unsigned int lba, unsigned char count, void* buffer) {
+    (void)drive; (void)lba; (void)count; (void)buffer;
+    return -1;
+}
+int ata_write_sectors(unsigned char drive, unsigned int lba, unsigned char count, const void* buffer) {
+    (void)drive; (void)lba; (void)count; (void)buffer;
+    return -1;
+}
+int ata_identify(unsigned char drive, ata_device_t* device) {
+    (void)drive; (void)device;
+    return -1;
+}
+ata_device_t* ata_get_device(unsigned char drive) {
+    (void)drive;
+    return 0;
+}
+
+#else
+// x86 Implementation
+
 static ata_device_t ata_devices[4];
 static int ata_device_count = 0;
 
 static void ata_wait_bsy(unsigned short io_base) {
     while (inb(io_base + ATA_REG_STATUS) & ATA_SR_BSY);
 }
+// ... rest of x86 code
 static void ata_wait_drq(unsigned short io_base) {
     while (!(inb(io_base + ATA_REG_STATUS) & ATA_SR_DRQ));
 }
@@ -137,3 +163,4 @@ ata_device_t* ata_get_device(unsigned char drive) {
     if (drive >= ata_device_count) return 0;
     return &ata_devices[drive];
 }
+#endif

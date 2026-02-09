@@ -9,6 +9,12 @@
 #define PAGE_SIZE 4096
 #define PAGES_PER_BYTE 8
 
+#if defined(__aarch64__) || defined(__arm__)
+#define PHY_BASE 0x40000000
+#else
+#define PHY_BASE 0x0
+#endif
+
 // Bitmap for tracking page allocation
 // Each bit represents one 4KB page
 #ifdef __arm__
@@ -60,18 +66,27 @@ void pmm_init() {
         page_bitmap[i] = 0xFF;
     }
     
-    // Mark first 1MB as used (BIOS, video memory, etc.)
+    // Mark first 1MB as used (BIOS, video memory, etc.) - relative to PHY_BASE
     unsigned int first_mb_pages = (1024 * 1024) / PAGE_SIZE;
     
-    // Mark usable memory as free (starting from 1MB)
+    // Mark usable memory as free (starting from 1MB relative offset)
     for (unsigned int i = first_mb_pages; i < total_pages; i++) {
-        pmm_free_page(i * PAGE_SIZE);
+        pmm_set_page_free(PHY_BASE + i * PAGE_SIZE);
     }
     
     // Mark kernel memory as used
-    unsigned int kernel_pages = ((unsigned int)&kernel_end) / PAGE_SIZE + 1;
+    unsigned int kernel_end_addr = (unsigned int)&kernel_end;
+    unsigned int kernel_size = kernel_end_addr - PHY_BASE;
+    unsigned int kernel_pages = kernel_size / PAGE_SIZE + 1;
+    
+    // Also reserve space for bitmap if on ARM (since it's placed after kernel)
+#ifdef __arm__
+    unsigned int bitmap_pages = bitmap_size / PAGE_SIZE + 1;
+    kernel_pages += bitmap_pages;
+#endif
+
     for (unsigned int i = 0; i < kernel_pages; i++) {
-        pmm_set_page_used(i * PAGE_SIZE);
+        pmm_set_page_used(PHY_BASE + i * PAGE_SIZE);
     }
     
     print_string("  Reserved: First ");
@@ -89,7 +104,8 @@ void pmm_init() {
 
 // Set page as used
 void pmm_set_page_used(unsigned int address) {
-    unsigned int page = address / PAGE_SIZE;
+    if (address < PHY_BASE) return;
+    unsigned int page = (address - PHY_BASE) / PAGE_SIZE;
     unsigned int byte = page / PAGES_PER_BYTE;
     unsigned int bit = page % PAGES_PER_BYTE;
     
@@ -103,7 +119,8 @@ void pmm_set_page_used(unsigned int address) {
 
 // Set page as free
 void pmm_set_page_free(unsigned int address) {
-    unsigned int page = address / PAGE_SIZE;
+    if (address < PHY_BASE) return;
+    unsigned int page = (address - PHY_BASE) / PAGE_SIZE;
     unsigned int byte = page / PAGES_PER_BYTE;
     unsigned int bit = page % PAGES_PER_BYTE;
     
@@ -124,7 +141,7 @@ unsigned int pmm_alloc_page() {
                 if (!(page_bitmap[i] & (1 << bit))) {
                     // Found free page
                     unsigned int page = i * PAGES_PER_BYTE + bit;
-                    unsigned int address = page * PAGE_SIZE;
+                    unsigned int address = page * PAGE_SIZE + PHY_BASE;
                     pmm_set_page_used(address);
                     return address;
                 }
@@ -165,9 +182,9 @@ unsigned int pmm_alloc_pages(unsigned int count) {
             if (found_count == count) {
                 // Found enough contiguous pages
                 for (unsigned int i = 0; i < count; i++) {
-                    pmm_set_page_used((start_page + i) * PAGE_SIZE);
+                    pmm_set_page_used((start_page + i) * PAGE_SIZE + PHY_BASE);
                 }
-                return start_page * PAGE_SIZE;
+                return start_page * PAGE_SIZE + PHY_BASE;
             }
         } else {
             // Used page, reset counter

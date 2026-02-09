@@ -8,6 +8,10 @@
 #include "memory.h"
 #include "pmm.h"
 #include "heap.h"
+#include "keyboard.h"
+#include "ata.h"
+#include "fs.h"
+#include "shell.h"
 #else
 #include "idt.h"
 #include "keyboard.h"
@@ -21,6 +25,7 @@
 #include "tss.h"
 #include "ata.h"
 #include "fs.h"
+#include "shell.h"
 #endif
 
 #define VIDEO_MEMORY 0xb8000
@@ -220,13 +225,25 @@ void kernel_main() {
     } else {
         print_string("[FAIL] Heap Allocation Test Failed\n");
     }
+    
+    keyboard_init();
+    ata_init();
+    fs_init();
+    // fs_mount() will fail on ARM currently as ATA is dummy, but that's fine.
+    if (fs_mount() == 0) {
+        print_string("[OK] Filesystem mounted\n");
+    } else {
+        print_string("[WARN] Filesystem mount failed (expected on ARM)\n");
+    }
+
 #endif
     
     print_string("\n===================================\n");
     print_string("   SUB OS v0.10.0 Ready!          \n");
     print_string("===================================\n\n");
-    print_string("Welcome to SUB OS!\n");
-    print_string("Type commands...\n\n");
+    
+    shell_init();
+    shell_run();
     
     while (1) {
 #if defined(__aarch64__) || defined(__arm__)

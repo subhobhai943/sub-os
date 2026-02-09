@@ -13,15 +13,15 @@
 
 SUB OS is a custom operating system built entirely from scratch in just 9 days! Now features disk I/O, user mode execution, multitasking, virtual memory, and system calls. **Now being ported to ARMv7 32-bit architecture!**
 
-**Current Version:** Alpha v0.9.0  
+**Current Version:** Alpha v0.10.0  
 **Development Started:** November 11, 2025  
-**Current Day:** 9 of 365  
-**Progress:** ~22% complete  
-**Status:** All core systems + disk I/O working! ✅
+**Current Day:** 10 of 365  
+**Progress:** ~25% complete  
+**Status:** Core systems + Disk I/O + Shell working! ✅
 
 ## ✨ Features
 
-### Fully Implemented (Day 1-9)
+### Fully Implemented (Day 1-10)
 
 **Boot & Protection:**
 - ✅ Custom bootloader
@@ -33,11 +33,12 @@ SUB OS is a custom operating system built entirely from scratch in just 9 days! 
 - ✅ VGA Text Mode (80x25)
 - ✅ PS/2 Keyboard (buffered)
 - ✅ PIT Timer (100 Hz)
-- ✅ **ATA/IDE Disk Driver (PIO mode)** 🆕
+- ✅ **ATA/IDE Disk Driver (PIO mode)**
+- ✅ **UART Driver (ARM)** 🆕
 
 **Memory Management:**
 - ✅ E820 detection
-- ✅ Physical Memory Manager
+- ✅ Physical Memory Manager (x86 & ARM)
 - ✅ Virtual Memory (paging)
 - ✅ Heap allocator
 
@@ -51,12 +52,14 @@ SUB OS is a custom operating system built entirely from scratch in just 9 days! 
 - ✅ System calls (INT 0x80)
 - ✅ User mode (Ring 3)
 - ✅ TSS
+- ✅ **Command Shell (ls, cat, echo, mem)** 🆕
 
 **Storage:**
 - ✅ ATA device detection
 - ✅ Sector read/write
 - ✅ LBA28 addressing (128GB)
 - ✅ Up to 4 drives support
+- ✅ Simple File System (SFS)
 
 ## 🔨 CI/CD Pipeline
 
@@ -156,6 +159,6 @@ PCMB student from West Bengal
 
 ---
 
-**Status**: Day 9 Complete - Disk I/O + CI/CD Working! 💾⚙️🚀
+**Status**: Day 10 Complete - Shell + ARM Support! 🐚🚀
 
-**Achievement**: Built a complete OS with disk I/O and automated testing in 9 days!
+**Achievement**: Built a functional shell and ported core kernel to ARM!

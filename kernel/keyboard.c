@@ -4,10 +4,27 @@
 #include "keyboard.h"
 #include "kernel.h"
 
+#if defined(__aarch64__) || defined(__arm__)
+#include "uart.h"
+
+void keyboard_init() {
+    print_string("[OK] Keyboard driver (UART) initialized\n");
+}
+
+char keyboard_getchar() {
+    return uart_getc();
+}
+
+void keyboard_handler() {
+    // Not used in polling mode for UART
+}
+
+#else
+
 // Keyboard port addresses
 #define KEYBOARD_DATA_PORT 0x60
 #define KEYBOARD_STATUS_PORT 0x64
-
+// ... rest of x86 code
 // US QWERTY keyboard layout
 unsigned char keyboard_map[128] = {
     0,  27, '1', '2', '3', '4', '5', '6', '7', '8', '9', '0', '-', '=', '\b',
@@ -60,7 +77,7 @@ void keyboard_buffer_add(char c) {
 }
 
 // Get character from buffer
-char keyboard_buffer_get() {
+char keyboard_getchar() {
     if (buffer_start == buffer_end) {
         return 0;  // Buffer empty
     }
@@ -107,3 +124,4 @@ void keyboard_init() {
     // We just need to enable IRQ1
     print_string("[OK] Keyboard driver initialized\n");
 }
+#endif
