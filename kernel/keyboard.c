@@ -12,7 +12,12 @@ void keyboard_init() {
 }
 
 char keyboard_getchar() {
-    return uart_getc();
+    char c = uart_getc();
+    if (c != 0) {
+        uart_putc(c); // Echo character
+        if (c == '\r') uart_putc('\n'); // Handle CR as CRLF for terminal
+    }
+    return c;
 }
 
 void keyboard_handler() {
@@ -20,6 +25,7 @@ void keyboard_handler() {
 }
 
 #else
+#include "uart.h"
 
 // Keyboard port addresses
 #define KEYBOARD_DATA_PORT 0x60
@@ -78,10 +84,14 @@ void keyboard_buffer_add(char c) {
 
 // Get character from buffer
 char keyboard_getchar() {
+    // Check UART first (for virtual keyboards/serial consoles)
+    char c = uart_getc();
+    if (c != 0) return c;
+
     if (buffer_start == buffer_end) {
         return 0;  // Buffer empty
     }
-    char c = keyboard_buffer[buffer_start];
+    c = keyboard_buffer[buffer_start];
     buffer_start = (buffer_start + 1) % KEYBOARD_BUFFER_SIZE;
     return c;
 }

@@ -83,6 +83,7 @@ else
     KERNEL_C_SRC = $(KERNEL_DIR)/kernel.c \
                    $(KERNEL_DIR)/idt.c \
                    $(KERNEL_DIR)/timer.c \
+                   $(KERNEL_DIR)/uart.c \
                    $(KERNEL_DIR)/keyboard.c \
                    $(KERNEL_DIR)/memory.c \
                    $(KERNEL_DIR)/paging.c \

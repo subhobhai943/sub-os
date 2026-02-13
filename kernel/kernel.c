@@ -174,6 +174,9 @@ void kernel_main() {
     print_string("[OK] Initializing Timer...\n");
     timer_init();
     
+    print_string("[OK] Initializing UART...\n");
+    uart_init();
+    
     print_string("[OK] Initializing Keyboard...\n");
     keyboard_init();
     

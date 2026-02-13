@@ -63,18 +63,19 @@ void shell_read_line() {
         char c = keyboard_getchar();
         if (c == 0) {
             // Wait for interrupt
+#if defined(__aarch64__) || defined(__arm__)
+            asm volatile("wfi");
+#else
             asm volatile("hlt");
+#endif
             continue;
         }
 
-        if (c == '\n') {
+        if (c == '\n' || c == '\r') {
             cmd_buffer[pos] = 0;
-            // print_string("\n"); // Keyboard driver already echoes newline?
-            // Checking keyboard.c: echoes using print_string.
-            // print_string handles \n by moving to next line.
-            // So we don't need to print \n again if the user pressed Enter and it was echoed.
+            print_string("\n"); // Ensure newline is printed
             return;
-        } else if (c == '\b') {
+        } else if (c == '\b' || c == 0x7F) { // Handle backspace and delete
             if (pos > 0) {
                 pos--;
             }
