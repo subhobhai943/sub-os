@@ -7,16 +7,18 @@
 
 // Pointer to video memory
 static unsigned char* video_memory = (unsigned char*)VGA_MEMORY;
+static unsigned char back_buffer[VGA_WIDTH * VGA_HEIGHT];
 
 void graphics_init() {
     // Mode 13h is already set by bootloader
     // We just clear the screen
     graphics_clear(COLOR_BLACK);
+    graphics_present();
 }
 
 void put_pixel(int x, int y, unsigned char color) {
     if (x >= 0 && x < VGA_WIDTH && y >= 0 && y < VGA_HEIGHT) {
-        video_memory[y * VGA_WIDTH + x] = color;
+        back_buffer[y * VGA_WIDTH + x] = color;
     }
 }
 
@@ -86,7 +88,33 @@ void draw_string(const char* str, int x, int y, unsigned char color) {
 
 void graphics_clear(unsigned char color) {
     for (int i = 0; i < VGA_WIDTH * VGA_HEIGHT; i++) {
-        video_memory[i] = color;
+        back_buffer[i] = color;
+    }
+}
+
+void graphics_present() {
+    for (int i = 0; i < VGA_WIDTH * VGA_HEIGHT; i++) {
+        video_memory[i] = back_buffer[i];
+    }
+}
+
+void graphics_scroll_up(int pixels, unsigned char clear_color) {
+    if (pixels <= 0) return;
+    if (pixels >= VGA_HEIGHT) {
+        graphics_clear(clear_color);
+        return;
+    }
+
+    int row_stride = VGA_WIDTH;
+    int shift = pixels * row_stride;
+    int visible = (VGA_HEIGHT * row_stride) - shift;
+
+    for (int i = 0; i < visible; i++) {
+        back_buffer[i] = back_buffer[i + shift];
+    }
+
+    for (int i = visible; i < VGA_WIDTH * VGA_HEIGHT; i++) {
+        back_buffer[i] = clear_color;
     }
 }
 
@@ -118,7 +146,7 @@ void graphics_draw_cursor(int x, int y) {
     for (int r = 0; r < 8; r++) {
         for (int c = 0; c < 8; c++) {
             if (x + c < VGA_WIDTH && y + r < VGA_HEIGHT) {
-                cursor_bg[r*8+c] = video_memory[(y + r) * VGA_WIDTH + (x + c)];
+                cursor_bg[r*8+c] = back_buffer[(y + r) * VGA_WIDTH + (x + c)];
             } else {
                 cursor_bg[r*8+c] = 0;
             }
@@ -153,5 +181,5 @@ void graphics_draw_cursor(int x, int y) {
 
 void graphics_update_cursor(int x, int y) {
     graphics_draw_cursor(x, y);
+    graphics_present();
 }
-
