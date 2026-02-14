@@ -54,7 +54,7 @@ void shell_init() {
 }
 
 void shell_prompt() {
-    print_string("SUBOS> ");
+    print_string("TATAKAE> ");
 }
 
 void shell_read_line() {
@@ -101,6 +101,7 @@ void shell_execute() {
         print_string("  rm [file]  - Delete file\n");
         print_string("  mem        - Show memory usage\n");
         print_string("  sys        - Show system info\n");
+        print_string("  eren       - Tatakae\n");
     } else if (strcmp(cmd_buffer, "clear") == 0) {
         clear_screen();
     } else if (strncmp(cmd_buffer, "echo ", 5) == 0) {
@@ -166,6 +167,10 @@ void shell_execute() {
         print_string("\nSUB OS v0.10.0\n");
         print_string("Built on: " __DATE__ " " __TIME__ "\n");
         print_string("Author: Subhobhai\n");
+    } else if (strcmp(cmd_buffer, "eren") == 0) {
+        print_string("\n  If you don't fight, you can't win.\n");
+        print_string("  Fight! Fight!\n");
+        print_string("         - Eren Yeager\n");
     } else {
         print_string("Unknown command: ");
         print_string(cmd_buffer);

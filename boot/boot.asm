@@ -20,6 +20,10 @@ KERNEL_OFFSET equ 0x1000    ; Memory offset where kernel will be loaded
     ; Load kernel from disk
     call load_kernel
     
+    ; Switch to VGA Mode 13h (320x200 256 colors)
+    mov ax, 0x0013
+    int 0x10
+    
     ; Switch to protected mode
     call switch_to_pm
     

@@ -92,10 +92,10 @@ else
                    $(KERNEL_DIR)/process.c \
                    $(KERNEL_DIR)/scheduler.c \
                    $(KERNEL_DIR)/syscall.c \
-                   $(KERNEL_DIR)/tss.c \
-                   $(KERNEL_DIR)/ata.c \
                    $(KERNEL_DIR)/fs.c \
-                   $(KERNEL_DIR)/shell.c
+                   $(KERNEL_DIR)/shell.c \
+                   $(KERNEL_DIR)/graphics.c \
+                   $(KERNEL_DIR)/mouse.c
 
     # Print routines and other boot assembly files
     PRINT_ASM_SRC = boot/print_string_pm.asm \

@@ -26,11 +26,13 @@
 #include "ata.h"
 #include "fs.h"
 #include "shell.h"
+#include "graphics.h"
+#include "mouse.h"
 #endif
 
 #define VIDEO_MEMORY 0xb8000
 #define MAX_ROWS 25
-#define MAX_COLS 80
+#define MAX_COLS 40
 #define WHITE_ON_BLACK 0x0f
 
 int cursor_row = 0;
@@ -62,11 +64,7 @@ void clear_screen() {
 #if defined(__aarch64__) || defined(__arm__)
     uart_puts("\033[2J\033[H"); // ANSI clear screen
 #else
-    char *video = (char *)VIDEO_MEMORY;
-    for (int i = 0; i < MAX_ROWS * MAX_COLS; i++) {
-        video[i * 2] = ' ';
-        video[i * 2 + 1] = WHITE_ON_BLACK;
-    }
+    graphics_clear(COLOR_BLACK);
     cursor_row = 0;
     cursor_col = 0;
 #endif
@@ -77,8 +75,7 @@ void print_char(char c, int col, int row, char attr) {
     uart_putc(c);
     (void)col; (void)row; (void)attr;
 #else
-    char *video = (char *)VIDEO_MEMORY;
-    if (!attr) attr = WHITE_ON_BLACK;
+    if (!attr) attr = COLOR_WHITE;
     
     if (c == '\n') {
         cursor_row++;
@@ -86,15 +83,14 @@ void print_char(char c, int col, int row, char attr) {
     } else if (c == '\b') {
         if (cursor_col > 0) {
             cursor_col--;
-            video[(cursor_row * MAX_COLS + cursor_col) * 2] = ' ';
+            // Clear char (draw black space)
+            draw_rect(cursor_col * 8, cursor_row * 8, 8, 8, COLOR_BLACK);
         }
     } else {
         if (col >= 0 && row >= 0) {
-            video[(row * MAX_COLS + col) * 2] = c;
-            video[(row * MAX_COLS + col) * 2 + 1] = attr;
+            draw_char(c, col * 8, row * 8, attr);
         } else {
-            video[(cursor_row * MAX_COLS + cursor_col) * 2] = c;
-            video[(cursor_row * MAX_COLS + cursor_col) * 2 + 1] = attr;
+            draw_char(c, cursor_col * 8, cursor_row * 8, attr);
             cursor_col++;
         }
     }
@@ -105,14 +101,20 @@ void print_char(char c, int col, int row, char attr) {
     }
     
     if (cursor_row >= MAX_ROWS) {
-        for (int i = 0; i < (MAX_ROWS - 1) * MAX_COLS; i++) {
-            video[i * 2] = video[(i + MAX_COLS) * 2];
-            video[i * 2 + 1] = video[(i + MAX_COLS) * 2 + 1];
+        // Scroll up by 8 pixels
+        unsigned char* video = (unsigned char*)0xA0000;
+        int line_size = 320 * 8;
+        int screen_size = 320 * 200;
+        
+        for (int i = 0; i < screen_size - line_size; i++) {
+            video[i] = video[i + line_size];
         }
-        for (int i = (MAX_ROWS - 1) * MAX_COLS; i < MAX_ROWS * MAX_COLS; i++) {
-            video[i * 2] = ' ';
-            video[i * 2 + 1] = WHITE_ON_BLACK;
+        
+        // Clear last line
+        for (int i = screen_size - line_size; i < screen_size; i++) {
+            video[i] = 0;
         }
+        
         cursor_row = MAX_ROWS - 1;
     }
 #endif
@@ -162,9 +164,29 @@ void print_dec(unsigned int num) {
 }
 
 void kernel_main() {
+#if !defined(__aarch64__) && !defined(__arm__)
+    graphics_init();
+    
+    // Draw Desktop Background
+    draw_rect(0, 0, 320, 200, COLOR_BLUE);
+    
+    // Draw Taskbar
+    draw_rect(0, 185, 320, 15, COLOR_LIGHT_GRAY);
+    draw_line(0, 185, 320, 185, COLOR_WHITE);
+    
+    // Draw Start Button
+    draw_rect(2, 187, 40, 11, COLOR_GREEN);
+    draw_string("Start", 4, 189, COLOR_BLACK);
+    
+    // Reset cursor for console output
+    cursor_row = 1;
+    cursor_col = 1;
+#else
     clear_screen();
+#endif
+
     print_string("===================================\n");
-    print_string("     SUB OS v0.10.0 Booting...    \n");
+    print_string("   SUB OS (Yeagerist Edition)     \n");
     print_string("===================================\n\n");
     
 #if !defined(__aarch64__) && !defined(__arm__)
@@ -200,6 +222,9 @@ void kernel_main() {
     
     print_string("[OK] Initializing Process Manager...\n");
     process_init();
+
+    print_string("[OK] Initializing Mouse...\n");
+    mouse_init();
     
     ata_init();
     fs_init();
