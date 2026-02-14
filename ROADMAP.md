@@ -87,7 +87,7 @@
 - [ ] Buffer cache
 
 ### Week 33-35: Advanced Features
-- [ ] Subdirectories
+- [x] Subdirectories
 - [ ] Permissions
 - [ ] File system checks
 
@@ -148,7 +148,7 @@
 
 - **Current Day**: 11 of 365
 - **Current Phase**: Phase 5 - Device Drivers / GUI
-- **Completion**: ~46%
+- **Completion**: ~47%
 - **Status**: Ahead of Schedule (Rapid Prototyping) 🚀
 
 ---

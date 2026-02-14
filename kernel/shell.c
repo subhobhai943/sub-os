@@ -11,6 +11,7 @@
 #define CMD_BUFFER_SIZE 128
 
 static char cmd_buffer[CMD_BUFFER_SIZE];
+static char cwd[FS_MAX_FILENAME] = "/";
 
 // String helper functions
 static int strcmp(const char* s1, const char* s2) {
@@ -34,16 +35,42 @@ static int strlen(const char* str) {
     return len;
 }
 
+static void strcpy(char* dest, const char* src) {
+    while (*src) *dest++ = *src++;
+    *dest = 0;
+}
+
+static void resolve_path(const char* input, char* out) {
+    if (!input || !input[0]) {
+        strcpy(out, cwd);
+        return;
+    }
+    if (input[0] == '/') {
+        strcpy(out, input);
+    } else if (strcmp(cwd, "/") == 0) {
+        out[0] = '/';
+        int i = 0;
+        while (input[i] && i < FS_MAX_FILENAME - 2) { out[i + 1] = input[i]; i++; }
+        out[i + 1] = 0;
+    } else {
+        int i = 0;
+        while (cwd[i] && i < FS_MAX_FILENAME - 1) { out[i] = cwd[i]; i++; }
+        if (i < FS_MAX_FILENAME - 1) out[i++] = '/';
+        int j = 0;
+        while (input[j] && i < FS_MAX_FILENAME - 1) out[i++] = input[j++];
+        out[i] = 0;
+    }
+    int len = strlen(out);
+    while (len > 1 && out[len - 1] == '/') out[--len] = 0;
+}
+
 // Get argument from command string
 static void get_arg(const char* cmd, char* arg) {
     int i = 0;
-    // Skip command
     while (cmd[i] && cmd[i] != ' ') i++;
-    // Skip spaces
     while (cmd[i] && cmd[i] == ' ') i++;
-    // Copy argument
     int j = 0;
-    while (cmd[i]) {
+    while (cmd[i] && j < FS_MAX_FILENAME - 1) {
         arg[j++] = cmd[i++];
     }
     arg[j] = 0;
@@ -54,7 +81,8 @@ void shell_init() {
 }
 
 void shell_prompt() {
-    print_string("TATAKAE> ");
+    print_string(cwd);
+    print_string(" > ");
 }
 
 void shell_read_line() {
@@ -62,7 +90,6 @@ void shell_read_line() {
     while (1) {
         char c = keyboard_getchar();
         if (c == 0) {
-            // Wait for interrupt
 #if defined(__aarch64__) || defined(__arm__)
             asm volatile("wfi");
 #else
@@ -73,12 +100,10 @@ void shell_read_line() {
 
         if (c == '\n' || c == '\r') {
             cmd_buffer[pos] = 0;
-            print_string("\n"); // Ensure newline is printed
+            print_string("\n");
             return;
-        } else if (c == '\b' || c == 0x7F) { // Handle backspace and delete
-            if (pos > 0) {
-                pos--;
-            }
+        } else if (c == '\b' || c == 0x7F) {
+            if (pos > 0) pos--;
         } else {
             if (pos < CMD_BUFFER_SIZE - 1) {
                 cmd_buffer[pos++] = c;
@@ -92,29 +117,56 @@ void shell_execute() {
 
     if (strcmp(cmd_buffer, "help") == 0) {
         print_string("\nAvailable commands:\n");
-        print_string("  help       - Show this help\n");
-        print_string("  clear      - Clear screen\n");
-        print_string("  echo [txt] - Print text\n");
-        print_string("  ls         - List files\n");
-        print_string("  cat [file] - Read file content\n");
-        print_string("  touch [f]  - Create empty file\n");
-        print_string("  rm [file]  - Delete file\n");
-        print_string("  mem        - Show memory usage\n");
-        print_string("  sys        - Show system info\n");
-        print_string("  eren       - Tatakae\n");
+        print_string("  help         - Show this help\n");
+        print_string("  clear        - Clear screen\n");
+        print_string("  echo [txt]   - Print text\n");
+        print_string("  pwd          - Print current directory\n");
+        print_string("  cd [dir]     - Change directory\n");
+        print_string("  ls [dir]     - List directory entries\n");
+        print_string("  mkdir [dir]  - Create directory\n");
+        print_string("  rmdir [dir]  - Remove empty directory\n");
+        print_string("  touch [f]    - Create empty file\n");
+        print_string("  cat [file]   - Read file content\n");
+        print_string("  rm [file]    - Delete file\n");
+        print_string("  mem          - Show memory usage\n");
+        print_string("  sys          - Show system info\n");
+        print_string("  eren         - Tatakae\n");
     } else if (strcmp(cmd_buffer, "clear") == 0) {
         clear_screen();
     } else if (strncmp(cmd_buffer, "echo ", 5) == 0) {
         print_string(cmd_buffer + 5);
         print_string("\n");
-    } else if (strcmp(cmd_buffer, "ls") == 0) {
-        fs_list("/");
+    } else if (strcmp(cmd_buffer, "pwd") == 0) {
+        print_string(cwd);
+        print_string("\n");
+    } else if (strcmp(cmd_buffer, "ls") == 0 || strncmp(cmd_buffer, "ls ", 3) == 0) {
+        char arg[FS_MAX_FILENAME], path[FS_MAX_FILENAME];
+        get_arg(cmd_buffer, arg);
+        resolve_path(arg, path);
+        fs_list(path);
+    } else if (strncmp(cmd_buffer, "cd ", 3) == 0) {
+        char arg[FS_MAX_FILENAME], path[FS_MAX_FILENAME];
+        get_arg(cmd_buffer, arg);
+        resolve_path(arg, path);
+        if (fs_is_dir(path)) strcpy(cwd, path);
+        else print_string("Directory not found\n");
+    } else if (strncmp(cmd_buffer, "mkdir ", 6) == 0) {
+        char arg[FS_MAX_FILENAME], path[FS_MAX_FILENAME];
+        get_arg(cmd_buffer, arg);
+        resolve_path(arg, path);
+        if (fs_create(path, FS_TYPE_DIR) == 0) print_string("Directory created\n");
+    } else if (strncmp(cmd_buffer, "rmdir ", 6) == 0) {
+        char arg[FS_MAX_FILENAME], path[FS_MAX_FILENAME];
+        get_arg(cmd_buffer, arg);
+        resolve_path(arg, path);
+        if (fs_delete(path) == 0) print_string("Directory deleted\n");
     } else if (strncmp(cmd_buffer, "cat ", 4) == 0) {
-        char filename[32];
+        char filename[FS_MAX_FILENAME], path[FS_MAX_FILENAME];
         get_arg(cmd_buffer, filename);
-        fs_file_t* file = fs_open(filename, "r");
+        resolve_path(filename, path);
+        fs_file_t* file = fs_open(path, "r");
         if (file) {
-            char buf[512]; // Small buffer
+            char buf[512];
             int bytes;
             print_string("\n");
             while ((bytes = fs_read(file, buf, 511)) > 0) {
@@ -127,15 +179,17 @@ void shell_execute() {
             print_string("File not found\n");
         }
     } else if (strncmp(cmd_buffer, "touch ", 6) == 0) {
-        char filename[32];
+        char filename[FS_MAX_FILENAME], path[FS_MAX_FILENAME];
         get_arg(cmd_buffer, filename);
-        if (fs_create(filename, FS_TYPE_FILE) == 0) {
+        resolve_path(filename, path);
+        if (fs_create(path, FS_TYPE_FILE) == 0) {
             print_string("File created\n");
         }
     } else if (strncmp(cmd_buffer, "rm ", 3) == 0) {
-        char filename[32];
+        char filename[FS_MAX_FILENAME], path[FS_MAX_FILENAME];
         get_arg(cmd_buffer, filename);
-        if (fs_delete(filename) == 0) {
+        resolve_path(filename, path);
+        if (fs_delete(path) == 0) {
             print_string("File deleted\n");
         }
     } else if (strcmp(cmd_buffer, "mem") == 0) {

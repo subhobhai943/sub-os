@@ -52,5 +52,6 @@ int fs_seek(fs_file_t* file, unsigned int offset);
 int fs_create(const char* path, unsigned char type);
 int fs_delete(const char* path);
 int fs_list(const char* path);
+int fs_is_dir(const char* path);
 
 #endif
