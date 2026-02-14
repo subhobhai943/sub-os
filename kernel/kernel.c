@@ -65,6 +65,7 @@ void clear_screen() {
     uart_puts("\033[2J\033[H"); // ANSI clear screen
 #else
     graphics_clear(COLOR_BLACK);
+    graphics_present();
     cursor_row = 0;
     cursor_col = 0;
 #endif
@@ -102,19 +103,8 @@ void print_char(char c, int col, int row, char attr) {
     
     if (cursor_row >= MAX_ROWS) {
         // Scroll up by 8 pixels
-        unsigned char* video = (unsigned char*)0xA0000;
-        int line_size = 320 * 8;
-        int screen_size = 320 * 200;
-        
-        for (int i = 0; i < screen_size - line_size; i++) {
-            video[i] = video[i + line_size];
-        }
-        
-        // Clear last line
-        for (int i = screen_size - line_size; i < screen_size; i++) {
-            video[i] = 0;
-        }
-        
+        graphics_scroll_up(8, COLOR_BLACK);
+        graphics_present();
         cursor_row = MAX_ROWS - 1;
     }
 #endif
@@ -127,6 +117,7 @@ void print_string(const char *str) {
     for (int i = 0; str[i] != 0; i++) {
         print_char(str[i], -1, -1, WHITE_ON_BLACK);
     }
+    graphics_present();
 #endif
 }
 
@@ -169,15 +160,16 @@ void kernel_main() {
     
     // Draw Desktop Background
     draw_rect(0, 0, 320, 200, COLOR_BLUE);
-    
+
     // Draw Taskbar
     draw_rect(0, 185, 320, 15, COLOR_LIGHT_GRAY);
     draw_line(0, 185, 320, 185, COLOR_WHITE);
-    
+
     // Draw Start Button
     draw_rect(2, 187, 40, 11, COLOR_GREEN);
     draw_string("Start", 4, 189, COLOR_BLACK);
-    
+    graphics_present();
+
     // Reset cursor for console output
     cursor_row = 1;
     cursor_col = 1;

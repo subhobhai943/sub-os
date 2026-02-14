@@ -101,7 +101,7 @@
 ### Week 39-40: Display (In Progress) 🏃
 - [x] VGA Mode 13h Driver
 - [x] Basic Drawing Primitives
-- [ ] Double Buffering
+- [x] Double Buffering
 - [ ] Window Compositor
 
 ### Week 41: Additional Devices
@@ -148,7 +148,7 @@
 
 - **Current Day**: 11 of 365
 - **Current Phase**: Phase 5 - Device Drivers / GUI
-- **Completion**: ~45%
+- **Completion**: ~46%
 - **Status**: Ahead of Schedule (Rapid Prototyping) 🚀
 
 ---
