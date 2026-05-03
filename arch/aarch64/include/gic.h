@@ -8,9 +8,7 @@ void         gic_disable_irq(unsigned int irq);
 unsigned int gic_ack(void);
 void         gic_eoi(unsigned int irq_id);
 
-/* ASM helpers */
-void gic_enable_irq_asm(unsigned int irq);
-void gic_disable_irq_asm(unsigned int irq);
-void gic_eoi_asm(unsigned int irq_id);
+/* Barrier helper (gic_asm.S) */
+void gic_dsb_sy(void);
 
 #endif /* AARCH64_GIC_H */

@@ -27,46 +27,84 @@ CFLAGS   = -Wall -Wextra -O2 \
 ASFLAGS  = $(CFLAGS)
 
 LDFLAGS  = -T $(ARCH_DIR)/linker_aarch64.ld \
-           -nostdlib --no-dynamic-linker
+           --no-dynamic-linker
 
-# Source files
-ASM_SRCS = $(ARCH_DIR)/boot/start.S \
-           $(ARCH_DIR)/boot/vectors.S \
-           $(ARCH_DIR)/drivers/gic.S
+# ---------------------------------------------------------------
+# Object files — every .S and .c gets a UNIQUE output path
+# to prevent pattern-rule collisions (the original gic.S vs gic.c
+# both resolved to build/.../drivers/gic.o).
+# ---------------------------------------------------------------
 
-C_SRCS   = $(ARCH_DIR)/kernel/main.c \
-           $(ARCH_DIR)/kernel/exception.c \
-           $(ARCH_DIR)/drivers/uart.c \
-           $(ARCH_DIR)/drivers/gic.c \
-           $(ARCH_DIR)/drivers/timer.c \
-           $(ARCH_DIR)/drivers/mmu.c
+# ASM objects
+OBJ_START    = $(BUILD)/boot/start.o
+OBJ_VECTORS  = $(BUILD)/boot/vectors.o
+OBJ_GIC_ASM  = $(BUILD)/drivers/gic_asm.o
 
-ASM_OBJS = $(patsubst $(ARCH_DIR)/%.S, $(BUILD)/%.o, $(ASM_SRCS))
-C_OBJS   = $(patsubst $(ARCH_DIR)/%.c, $(BUILD)/%.o, $(C_SRCS))
-OBJS     = $(ASM_OBJS) $(C_OBJS)
+# C objects
+OBJ_MAIN     = $(BUILD)/kernel/main.o
+OBJ_EXCEPT   = $(BUILD)/kernel/exception.o
+OBJ_UART     = $(BUILD)/drivers/uart.o
+OBJ_GIC      = $(BUILD)/drivers/gic.o
+OBJ_TIMER    = $(BUILD)/drivers/timer.o
+OBJ_MMU      = $(BUILD)/drivers/mmu.o
 
-KERNEL_ELF  = $(BUILD)/sub_os_aarch64.elf
-KERNEL_BIN  = $(BUILD)/sub_os_aarch64.bin
+OBJS = $(OBJ_START) $(OBJ_VECTORS) $(OBJ_GIC_ASM) \
+       $(OBJ_MAIN) $(OBJ_EXCEPT) \
+       $(OBJ_UART) $(OBJ_GIC) $(OBJ_TIMER) $(OBJ_MMU)
+
+KERNEL_ELF = $(BUILD)/sub_os_aarch64.elf
+KERNEL_BIN = $(BUILD)/sub_os_aarch64.bin
 
 .PHONY: all run clean
 
 all: $(KERNEL_BIN)
 
-$(BUILD):
-	mkdir -p $(BUILD)/boot $(BUILD)/drivers $(BUILD)/kernel
+# Create build subdirectories
+$(BUILD)/boot $(BUILD)/drivers $(BUILD)/kernel:
+	mkdir -p $@
 
-$(BUILD)/%.o: $(ARCH_DIR)/%.S | $(BUILD)
+# ---------------------------------------------------------------
+# Explicit compile rules (avoids any ambiguous pattern matching)
+# ---------------------------------------------------------------
+$(OBJ_START):   $(ARCH_DIR)/boot/start.S   | $(BUILD)/boot
 	$(AS) $(ASFLAGS) -c $< -o $@
 
-$(BUILD)/%.o: $(ARCH_DIR)/%.c | $(BUILD)
+$(OBJ_VECTORS): $(ARCH_DIR)/boot/vectors.S | $(BUILD)/boot
+	$(AS) $(ASFLAGS) -c $< -o $@
+
+$(OBJ_GIC_ASM): $(ARCH_DIR)/drivers/gic_asm.S | $(BUILD)/drivers
+	$(AS) $(ASFLAGS) -c $< -o $@
+
+$(OBJ_MAIN):    $(ARCH_DIR)/kernel/main.c      | $(BUILD)/kernel
 	$(CC) $(CFLAGS) -c $< -o $@
 
+$(OBJ_EXCEPT):  $(ARCH_DIR)/kernel/exception.c | $(BUILD)/kernel
+	$(CC) $(CFLAGS) -c $< -o $@
+
+$(OBJ_UART):    $(ARCH_DIR)/drivers/uart.c  | $(BUILD)/drivers
+	$(CC) $(CFLAGS) -c $< -o $@
+
+$(OBJ_GIC):     $(ARCH_DIR)/drivers/gic.c   | $(BUILD)/drivers
+	$(CC) $(CFLAGS) -c $< -o $@
+
+$(OBJ_TIMER):   $(ARCH_DIR)/drivers/timer.c | $(BUILD)/drivers
+	$(CC) $(CFLAGS) -c $< -o $@
+
+$(OBJ_MMU):     $(ARCH_DIR)/drivers/mmu.c   | $(BUILD)/drivers
+	$(CC) $(CFLAGS) -c $< -o $@
+
+# ---------------------------------------------------------------
+# Link + binary strip
+# ---------------------------------------------------------------
 $(KERNEL_ELF): $(OBJS)
 	$(LD) $(LDFLAGS) $(OBJS) -o $@
 
 $(KERNEL_BIN): $(KERNEL_ELF)
 	$(OBJCOPY) -O binary $< $@
 
+# ---------------------------------------------------------------
+# Run in QEMU
+# ---------------------------------------------------------------
 run: $(KERNEL_BIN)
 	qemu-system-aarch64 \
 	    -machine virt,gic-version=2 \
