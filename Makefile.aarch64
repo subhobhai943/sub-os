@@ -30,50 +30,53 @@ OBJ_GIC      = $(BUILD)/drivers/gic.o
 OBJ_TIMER    = $(BUILD)/drivers/timer.o
 OBJ_MMU      = $(BUILD)/drivers/mmu.o
 OBJ_SHELL    = $(BUILD)/shell/shell.o
+OBJ_FB       = $(BUILD)/drivers/fb.o
+OBJ_FONT     = $(BUILD)/gui/font.o
+OBJ_DRAW     = $(BUILD)/gui/draw.o
+OBJ_DESKTOP  = $(BUILD)/gui/desktop.o
 
 OBJS = $(OBJ_START) $(OBJ_VECTORS) $(OBJ_GIC_ASM) \
        $(OBJ_MAIN) $(OBJ_EXCEPT) \
        $(OBJ_UART) $(OBJ_GIC) $(OBJ_TIMER) $(OBJ_MMU) \
-       $(OBJ_SHELL)
+       $(OBJ_SHELL) $(OBJ_FB) $(OBJ_FONT) $(OBJ_DRAW) $(OBJ_DESKTOP)
 
 KERNEL_ELF = $(BUILD)/sub_os_aarch64.elf
 KERNEL_BIN = $(BUILD)/sub_os_aarch64.bin
 
-.PHONY: all run clean
+.PHONY: all run run-gui clean
 
 all: $(KERNEL_BIN)
 
-$(BUILD)/boot $(BUILD)/drivers $(BUILD)/kernel $(BUILD)/shell:
+$(BUILD)/boot $(BUILD)/drivers $(BUILD)/kernel $(BUILD)/shell $(BUILD)/gui:
 	mkdir -p $@
 
 $(OBJ_START):   $(ARCH_DIR)/boot/start.S        | $(BUILD)/boot
 	$(AS) $(ASFLAGS) -c $< -o $@
-
 $(OBJ_VECTORS): $(ARCH_DIR)/boot/vectors.S       | $(BUILD)/boot
 	$(AS) $(ASFLAGS) -c $< -o $@
-
 $(OBJ_GIC_ASM): $(ARCH_DIR)/drivers/gic_asm.S    | $(BUILD)/drivers
 	$(AS) $(ASFLAGS) -c $< -o $@
-
 $(OBJ_MAIN):    $(ARCH_DIR)/kernel/main.c         | $(BUILD)/kernel
 	$(CC) $(CFLAGS) -c $< -o $@
-
 $(OBJ_EXCEPT):  $(ARCH_DIR)/kernel/exception.c    | $(BUILD)/kernel
 	$(CC) $(CFLAGS) -c $< -o $@
-
 $(OBJ_UART):    $(ARCH_DIR)/drivers/uart.c        | $(BUILD)/drivers
 	$(CC) $(CFLAGS) -c $< -o $@
-
 $(OBJ_GIC):     $(ARCH_DIR)/drivers/gic.c         | $(BUILD)/drivers
 	$(CC) $(CFLAGS) -c $< -o $@
-
 $(OBJ_TIMER):   $(ARCH_DIR)/drivers/timer.c       | $(BUILD)/drivers
 	$(CC) $(CFLAGS) -c $< -o $@
-
 $(OBJ_MMU):     $(ARCH_DIR)/drivers/mmu.c         | $(BUILD)/drivers
 	$(CC) $(CFLAGS) -c $< -o $@
-
 $(OBJ_SHELL):   $(ARCH_DIR)/shell/shell.c         | $(BUILD)/shell
+	$(CC) $(CFLAGS) -c $< -o $@
+$(OBJ_FB):      $(ARCH_DIR)/drivers/fb.c          | $(BUILD)/drivers
+	$(CC) $(CFLAGS) -c $< -o $@
+$(OBJ_FONT):    $(ARCH_DIR)/gui/font.c             | $(BUILD)/gui
+	$(CC) $(CFLAGS) -c $< -o $@
+$(OBJ_DRAW):    $(ARCH_DIR)/gui/draw.c             | $(BUILD)/gui
+	$(CC) $(CFLAGS) -c $< -o $@
+$(OBJ_DESKTOP): $(ARCH_DIR)/gui/desktop.c          | $(BUILD)/gui
 	$(CC) $(CFLAGS) -c $< -o $@
 
 $(KERNEL_ELF): $(OBJS)
@@ -82,12 +85,25 @@ $(KERNEL_ELF): $(OBJS)
 $(KERNEL_BIN): $(KERNEL_ELF)
 	$(OBJCOPY) -O binary $< $@
 
-run: $(KERNEL_BIN)
+# -nographic: UART shell only (no GPU window)
+run:
 	qemu-system-aarch64 \
 	    -machine virt,gic-version=2 \
 	    -cpu max \
 	    -m 256M \
 	    -nographic \
+	    -kernel $(KERNEL_BIN)
+
+# run-gui: opens a QEMU window with VirtIO GPU display
+run-gui: $(KERNEL_BIN)
+	qemu-system-aarch64 \
+	    -machine virt,gic-version=2 \
+	    -cpu max \
+	    -m 256M \
+	    -device virtio-gpu-pci \
+	    -device usb-ehci \
+	    -device usb-tablet \
+	    -serial stdio \
 	    -kernel $(KERNEL_BIN)
 
 clean:

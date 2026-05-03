@@ -3,7 +3,7 @@
 #include "../include/uart.h"
 #include "../include/gic.h"
 #include "../include/timer.h"
-#include "../include/shell.h"
+#include "../include/desktop.h"
 
 extern void exception_vectors(void);
 
@@ -17,11 +17,20 @@ static void install_vectors(void) {
 
 void main(void) {
     uart_init();
+    uart_puts("SUB OS - AArch64 booting...\r\n");
 
     install_vectors();
-    gic_init();
-    timer_init();
+    uart_puts("[OK] Vectors\r\n");
 
-    /* Hand off to interactive shell (never returns) */
-    shell_run();
+    gic_init();
+    uart_puts("[OK] GIC\r\n");
+
+    timer_init();
+    uart_puts("[OK] Timer\r\n");
+
+    uart_puts("[..] Starting GUI...\r\n");
+    gui_main();
+
+    /* Should never reach here */
+    for (;;) __asm__ volatile("wfi");
 }
