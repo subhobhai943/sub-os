@@ -1,0 +1,79 @@
+# SUB OS - AArch64 Port Makefile
+#
+# Toolchain: aarch64-linux-gnu-* (or aarch64-none-elf-*)
+# Target:    QEMU virt machine (-machine virt,gic-version=2)
+#
+# Usage:
+#   make -f Makefile.aarch64           # build kernel image
+#   make -f Makefile.aarch64 run       # run in QEMU
+#   make -f Makefile.aarch64 clean     # remove build artefacts
+
+CROSS   ?= aarch64-linux-gnu-
+CC       = $(CROSS)gcc
+AS       = $(CROSS)gcc
+LD       = $(CROSS)ld
+OBJCOPY  = $(CROSS)objcopy
+
+ARCH_DIR = arch/aarch64
+BUILD    = build/aarch64
+
+CFLAGS   = -Wall -Wextra -O2 \
+           -ffreestanding -nostdlib -nostdinc \
+           -mcpu=cortex-a53 -mstrict-align \
+           -fno-stack-protector -fno-common \
+           -fno-pie -fno-pic \
+           -I$(ARCH_DIR)/include
+
+ASFLAGS  = $(CFLAGS)
+
+LDFLAGS  = -T $(ARCH_DIR)/linker_aarch64.ld \
+           -nostdlib --no-dynamic-linker
+
+# Source files
+ASM_SRCS = $(ARCH_DIR)/boot/start.S \
+           $(ARCH_DIR)/boot/vectors.S \
+           $(ARCH_DIR)/drivers/gic.S
+
+C_SRCS   = $(ARCH_DIR)/kernel/main.c \
+           $(ARCH_DIR)/kernel/exception.c \
+           $(ARCH_DIR)/drivers/uart.c \
+           $(ARCH_DIR)/drivers/gic.c \
+           $(ARCH_DIR)/drivers/timer.c \
+           $(ARCH_DIR)/drivers/mmu.c
+
+ASM_OBJS = $(patsubst $(ARCH_DIR)/%.S, $(BUILD)/%.o, $(ASM_SRCS))
+C_OBJS   = $(patsubst $(ARCH_DIR)/%.c, $(BUILD)/%.o, $(C_SRCS))
+OBJS     = $(ASM_OBJS) $(C_OBJS)
+
+KERNEL_ELF  = $(BUILD)/sub_os_aarch64.elf
+KERNEL_BIN  = $(BUILD)/sub_os_aarch64.bin
+
+.PHONY: all run clean
+
+all: $(KERNEL_BIN)
+
+$(BUILD):
+	mkdir -p $(BUILD)/boot $(BUILD)/drivers $(BUILD)/kernel
+
+$(BUILD)/%.o: $(ARCH_DIR)/%.S | $(BUILD)
+	$(AS) $(ASFLAGS) -c $< -o $@
+
+$(BUILD)/%.o: $(ARCH_DIR)/%.c | $(BUILD)
+	$(CC) $(CFLAGS) -c $< -o $@
+
+$(KERNEL_ELF): $(OBJS)
+	$(LD) $(LDFLAGS) $(OBJS) -o $@
+
+$(KERNEL_BIN): $(KERNEL_ELF)
+	$(OBJCOPY) -O binary $< $@
+
+run: $(KERNEL_BIN)
+	qemu-system-aarch64 \
+	    -machine virt,gic-version=2 \
+	    -cpu cortex-a53 \
+	    -m 256M \
+	    -nographic \
+	    -kernel $(KERNEL_BIN)
+
+clean:
+	rm -rf $(BUILD)
