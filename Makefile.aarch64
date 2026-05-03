@@ -1,12 +1,12 @@
 # SUB OS - AArch64 Port Makefile
 #
-# Toolchain: aarch64-linux-gnu-* (or aarch64-none-elf-*)
-# Target:    QEMU virt machine (-machine virt,gic-version=2)
+# Toolchain: aarch64-linux-gnu-*
+# Target:    QEMU virt machine (gic-version=2)
 #
 # Usage:
-#   make -f Makefile.aarch64           # build kernel image
+#   make -f Makefile.aarch64           # build
 #   make -f Makefile.aarch64 run       # run in QEMU
-#   make -f Makefile.aarch64 clean     # remove build artefacts
+#   make -f Makefile.aarch64 clean     # clean
 
 CROSS   ?= aarch64-linux-gnu-
 CC       = $(CROSS)gcc
@@ -17,9 +17,9 @@ OBJCOPY  = $(CROSS)objcopy
 ARCH_DIR = arch/aarch64
 BUILD    = build/aarch64
 
-CFLAGS   = -Wall -Wextra -O2 \
+CFLAGS   = -Wall -Wextra -O1 \
            -ffreestanding -nostdlib -nostdinc \
-           -mcpu=cortex-a53 -mstrict-align \
+           -march=armv8-a -mstrict-align \
            -fno-stack-protector -fno-common \
            -fno-pie -fno-pic \
            -I$(ARCH_DIR)/include
@@ -29,18 +29,10 @@ ASFLAGS  = $(CFLAGS)
 LDFLAGS  = -T $(ARCH_DIR)/linker_aarch64.ld \
            --no-dynamic-linker
 
-# ---------------------------------------------------------------
-# Object files — every .S and .c gets a UNIQUE output path
-# to prevent pattern-rule collisions (the original gic.S vs gic.c
-# both resolved to build/.../drivers/gic.o).
-# ---------------------------------------------------------------
-
-# ASM objects
+# Object files (explicit, no pattern collision)
 OBJ_START    = $(BUILD)/boot/start.o
 OBJ_VECTORS  = $(BUILD)/boot/vectors.o
 OBJ_GIC_ASM  = $(BUILD)/drivers/gic_asm.o
-
-# C objects
 OBJ_MAIN     = $(BUILD)/kernel/main.o
 OBJ_EXCEPT   = $(BUILD)/kernel/exception.o
 OBJ_UART     = $(BUILD)/drivers/uart.o
@@ -59,13 +51,9 @@ KERNEL_BIN = $(BUILD)/sub_os_aarch64.bin
 
 all: $(KERNEL_BIN)
 
-# Create build subdirectories
 $(BUILD)/boot $(BUILD)/drivers $(BUILD)/kernel:
 	mkdir -p $@
 
-# ---------------------------------------------------------------
-# Explicit compile rules (avoids any ambiguous pattern matching)
-# ---------------------------------------------------------------
 $(OBJ_START):   $(ARCH_DIR)/boot/start.S   | $(BUILD)/boot
 	$(AS) $(ASFLAGS) -c $< -o $@
 
@@ -93,22 +81,18 @@ $(OBJ_TIMER):   $(ARCH_DIR)/drivers/timer.c | $(BUILD)/drivers
 $(OBJ_MMU):     $(ARCH_DIR)/drivers/mmu.c   | $(BUILD)/drivers
 	$(CC) $(CFLAGS) -c $< -o $@
 
-# ---------------------------------------------------------------
-# Link + binary strip
-# ---------------------------------------------------------------
 $(KERNEL_ELF): $(OBJS)
 	$(LD) $(LDFLAGS) $(OBJS) -o $@
 
 $(KERNEL_BIN): $(KERNEL_ELF)
 	$(OBJCOPY) -O binary $< $@
 
-# ---------------------------------------------------------------
-# Run in QEMU
-# ---------------------------------------------------------------
+# Use -cpu max so QEMU picks best available AArch64 CPU model
+# This avoids cortex-a53 register layout mismatches on newer hosts
 run: $(KERNEL_BIN)
 	qemu-system-aarch64 \
 	    -machine virt,gic-version=2 \
-	    -cpu cortex-a53 \
+	    -cpu max \
 	    -m 256M \
 	    -nographic \
 	    -kernel $(KERNEL_BIN)
