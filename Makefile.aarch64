@@ -1,13 +1,4 @@
 # SUB OS - AArch64 Port Makefile
-#
-# Toolchain: aarch64-linux-gnu-*
-# Target:    QEMU virt machine (gic-version=2)
-#
-# Usage:
-#   make -f Makefile.aarch64           # build
-#   make -f Makefile.aarch64 run       # run in QEMU
-#   make -f Makefile.aarch64 clean     # clean
-
 CROSS   ?= aarch64-linux-gnu-
 CC       = $(CROSS)gcc
 AS       = $(CROSS)gcc
@@ -29,7 +20,6 @@ ASFLAGS  = $(CFLAGS)
 LDFLAGS  = -T $(ARCH_DIR)/linker_aarch64.ld \
            --no-dynamic-linker
 
-# Object files (explicit, no pattern collision)
 OBJ_START    = $(BUILD)/boot/start.o
 OBJ_VECTORS  = $(BUILD)/boot/vectors.o
 OBJ_GIC_ASM  = $(BUILD)/drivers/gic_asm.o
@@ -39,10 +29,12 @@ OBJ_UART     = $(BUILD)/drivers/uart.o
 OBJ_GIC      = $(BUILD)/drivers/gic.o
 OBJ_TIMER    = $(BUILD)/drivers/timer.o
 OBJ_MMU      = $(BUILD)/drivers/mmu.o
+OBJ_SHELL    = $(BUILD)/shell/shell.o
 
 OBJS = $(OBJ_START) $(OBJ_VECTORS) $(OBJ_GIC_ASM) \
        $(OBJ_MAIN) $(OBJ_EXCEPT) \
-       $(OBJ_UART) $(OBJ_GIC) $(OBJ_TIMER) $(OBJ_MMU)
+       $(OBJ_UART) $(OBJ_GIC) $(OBJ_TIMER) $(OBJ_MMU) \
+       $(OBJ_SHELL)
 
 KERNEL_ELF = $(BUILD)/sub_os_aarch64.elf
 KERNEL_BIN = $(BUILD)/sub_os_aarch64.bin
@@ -51,34 +43,37 @@ KERNEL_BIN = $(BUILD)/sub_os_aarch64.bin
 
 all: $(KERNEL_BIN)
 
-$(BUILD)/boot $(BUILD)/drivers $(BUILD)/kernel:
+$(BUILD)/boot $(BUILD)/drivers $(BUILD)/kernel $(BUILD)/shell:
 	mkdir -p $@
 
-$(OBJ_START):   $(ARCH_DIR)/boot/start.S   | $(BUILD)/boot
+$(OBJ_START):   $(ARCH_DIR)/boot/start.S        | $(BUILD)/boot
 	$(AS) $(ASFLAGS) -c $< -o $@
 
-$(OBJ_VECTORS): $(ARCH_DIR)/boot/vectors.S | $(BUILD)/boot
+$(OBJ_VECTORS): $(ARCH_DIR)/boot/vectors.S       | $(BUILD)/boot
 	$(AS) $(ASFLAGS) -c $< -o $@
 
-$(OBJ_GIC_ASM): $(ARCH_DIR)/drivers/gic_asm.S | $(BUILD)/drivers
+$(OBJ_GIC_ASM): $(ARCH_DIR)/drivers/gic_asm.S    | $(BUILD)/drivers
 	$(AS) $(ASFLAGS) -c $< -o $@
 
-$(OBJ_MAIN):    $(ARCH_DIR)/kernel/main.c      | $(BUILD)/kernel
+$(OBJ_MAIN):    $(ARCH_DIR)/kernel/main.c         | $(BUILD)/kernel
 	$(CC) $(CFLAGS) -c $< -o $@
 
-$(OBJ_EXCEPT):  $(ARCH_DIR)/kernel/exception.c | $(BUILD)/kernel
+$(OBJ_EXCEPT):  $(ARCH_DIR)/kernel/exception.c    | $(BUILD)/kernel
 	$(CC) $(CFLAGS) -c $< -o $@
 
-$(OBJ_UART):    $(ARCH_DIR)/drivers/uart.c  | $(BUILD)/drivers
+$(OBJ_UART):    $(ARCH_DIR)/drivers/uart.c        | $(BUILD)/drivers
 	$(CC) $(CFLAGS) -c $< -o $@
 
-$(OBJ_GIC):     $(ARCH_DIR)/drivers/gic.c   | $(BUILD)/drivers
+$(OBJ_GIC):     $(ARCH_DIR)/drivers/gic.c         | $(BUILD)/drivers
 	$(CC) $(CFLAGS) -c $< -o $@
 
-$(OBJ_TIMER):   $(ARCH_DIR)/drivers/timer.c | $(BUILD)/drivers
+$(OBJ_TIMER):   $(ARCH_DIR)/drivers/timer.c       | $(BUILD)/drivers
 	$(CC) $(CFLAGS) -c $< -o $@
 
-$(OBJ_MMU):     $(ARCH_DIR)/drivers/mmu.c   | $(BUILD)/drivers
+$(OBJ_MMU):     $(ARCH_DIR)/drivers/mmu.c         | $(BUILD)/drivers
+	$(CC) $(CFLAGS) -c $< -o $@
+
+$(OBJ_SHELL):   $(ARCH_DIR)/shell/shell.c         | $(BUILD)/shell
 	$(CC) $(CFLAGS) -c $< -o $@
 
 $(KERNEL_ELF): $(OBJS)
@@ -87,8 +82,6 @@ $(KERNEL_ELF): $(OBJS)
 $(KERNEL_BIN): $(KERNEL_ELF)
 	$(OBJCOPY) -O binary $< $@
 
-# Use -cpu max so QEMU picks best available AArch64 CPU model
-# This avoids cortex-a53 register layout mismatches on newer hosts
 run: $(KERNEL_BIN)
 	qemu-system-aarch64 \
 	    -machine virt,gic-version=2 \
