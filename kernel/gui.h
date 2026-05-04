@@ -4,7 +4,7 @@
 #ifndef GUI_H
 #define GUI_H
 
-// VGA text-mode colors
+// VGA text-mode color indices
 #define VGA_BLACK         0
 #define VGA_BLUE          1
 #define VGA_GREEN         2
@@ -19,10 +19,14 @@
 #define VGA_LIGHT_CYAN    11
 #define VGA_LIGHT_RED     12
 #define VGA_LIGHT_MAGENTA 13
-#define VGA_LIGHT_BROWN   14
+#define VGA_YELLOW        14
 #define VGA_WHITE         15
 
-#define VGA_COLOR(fg, bg) ((bg << 4) | fg)
+// Alias kept for compatibility
+#define VGA_LIGHT_BROWN   14
+
+// Make a VGA attribute byte: low nibble = fg, high nibble = bg
+#define VGA_COLOR(fg, bg) (((bg) << 4) | (fg))
 
 // Primitives
 void gui_draw_char(int col, int row, char c, unsigned char color);
