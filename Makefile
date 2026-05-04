@@ -22,6 +22,7 @@ ISO_ROOT   = $(BUILD_DIR)/iso_root
 
 BOOT_ASM = $(BOOT_DIR)/boot.asm
 
+# Kernel ASM files - compiled as ELF32 objects and linked into kernel.bin
 KERNEL_ASM_SRC = $(KERNEL_DIR)/kernel_entry.asm \
                  $(KERNEL_DIR)/idt.asm \
                  $(KERNEL_DIR)/isr.asm \
@@ -30,6 +31,7 @@ KERNEL_ASM_SRC = $(KERNEL_DIR)/kernel_entry.asm \
                  $(KERNEL_DIR)/tss.asm \
                  $(KERNEL_DIR)/usermode.asm
 
+# Kernel C files
 KERNEL_C_SRC = $(KERNEL_DIR)/kernel.c \
                $(KERNEL_DIR)/gui.c \
                $(KERNEL_DIR)/apps.c \
@@ -48,16 +50,14 @@ KERNEL_C_SRC = $(KERNEL_DIR)/kernel.c \
                $(KERNEL_DIR)/ata.c \
                $(KERNEL_DIR)/fs.c
 
-PRINT_ASM_SRC = boot/print_string_pm.asm \
-                boot/disk_load.asm \
-                boot/gdt.asm \
-                boot/memory_detect.asm \
-                boot/switch_to_pm.asm
+# NOTE: boot/*.asm files (gdt.asm, disk_load.asm, switch_to_pm.asm,
+#       memory_detect.asm, print_string_pm.asm) are 16-bit real-mode code
+#       %included by boot.asm and assembled flat into boot.bin.
+#       They must NOT be compiled as separate elf32 objects.
 
-PRINT_ASM_OBJ  = $(patsubst boot/%.asm,        $(BUILD_DIR)/%.o, $(PRINT_ASM_SRC))
 KERNEL_ASM_OBJ = $(patsubst $(KERNEL_DIR)/%.asm, $(BUILD_DIR)/%.o, $(KERNEL_ASM_SRC))
 KERNEL_C_OBJ   = $(patsubst $(KERNEL_DIR)/%.c,   $(BUILD_DIR)/%.o, $(KERNEL_C_SRC))
-KERNEL_OBJ     = $(KERNEL_ASM_OBJ) $(KERNEL_C_OBJ) $(PRINT_ASM_OBJ)
+KERNEL_OBJ     = $(KERNEL_ASM_OBJ) $(KERNEL_C_OBJ)
 
 .PHONY: all clean run run-iso iso
 
@@ -66,28 +66,32 @@ all: $(OS_IMAGE) $(OS_FLOPPY) $(OS_ISO)
 $(BUILD_DIR):
 	mkdir -p $(BUILD_DIR)
 
+# Boot sector: assembled as flat binary (-f bin)
 $(BOOT_BIN): $(BOOT_ASM) | $(BUILD_DIR)
 	$(ASM) -f bin $< -o $@
 
+# Kernel ASM objects: ELF32
 $(BUILD_DIR)/%.o: $(KERNEL_DIR)/%.asm | $(BUILD_DIR)
 	$(ASM) $(ASM_FLAGS) $< -o $@
 
-$(BUILD_DIR)/%.o: $(BOOT_DIR)/%.asm | $(BUILD_DIR)
-	$(ASM) $(ASM_FLAGS) $< -o $@
-
+# Kernel C objects
 $(BUILD_DIR)/%.o: $(KERNEL_DIR)/%.c | $(BUILD_DIR)
 	$(CC) $(CC_FLAGS) $< -o $@
 
+# Link kernel
 $(KERNEL_BIN): $(KERNEL_OBJ)
 	$(LD) $(LD_FLAGS) $^ -o $@
 
+# Combine boot + kernel into raw image
 $(OS_IMAGE): $(BOOT_BIN) $(KERNEL_BIN)
 	cat $^ > $@
 
+# Floppy image
 $(OS_FLOPPY): $(OS_IMAGE)
 	dd if=/dev/zero of=$@ bs=512 count=2880
 	dd if=$(OS_IMAGE) of=$@ conv=notrunc
 
+# ISO image
 $(OS_ISO): $(OS_FLOPPY)
 	mkdir -p $(ISO_ROOT)
 	cp $(OS_FLOPPY) $(ISO_ROOT)/sub_os.img

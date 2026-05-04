@@ -17,35 +17,34 @@
 #include "shell.h"
 #include "gui.h"
 
-#define VIDEO_MEMORY 0xb8000
-#define MAX_ROWS 25
-#define MAX_COLS 80
-#define WHITE_ON_BLACK 0x0f
+#define VIDEO_MEMORY   0xB8000
+#define MAX_ROWS       25
+#define MAX_COLS       80
+#define WHITE_ON_BLACK 0x0F
 
 int cursor_row = 0;
 int cursor_col = 0;
 
+// ── I/O port helpers ──────────────────────────────────────────────────────
 void outb(unsigned short port, unsigned char val) {
     asm volatile ("outb %0, %1" : : "a"(val), "Nd"(port));
 }
-
 unsigned char inb(unsigned short port) {
     unsigned char ret;
     asm volatile ("inb %1, %0" : "=a"(ret) : "Nd"(port));
     return ret;
 }
-
 unsigned short inw(unsigned short port) {
     unsigned short ret;
     asm volatile ("inw %1, %0" : "=a"(ret) : "Nd"(port));
     return ret;
 }
-
 void outw(unsigned short port, unsigned short val) {
     asm volatile ("outw %0, %1" : : "a"(val), "Nd"(port));
 }
 
-void update_cursor(int row, int col) {
+// ── Hardware cursor ──────────────────────────────────────────────────────
+static void update_cursor(int row, int col) {
     unsigned short pos = (unsigned short)(row * MAX_COLS + col);
     outb(0x3D4, 0x0F);
     outb(0x3D5, (unsigned char)(pos & 0xFF));
@@ -53,20 +52,19 @@ void update_cursor(int row, int col) {
     outb(0x3D5, (unsigned char)((pos >> 8) & 0xFF));
 }
 
-void clear_screen() {
-    char *video = (char *)VIDEO_MEMORY;
-    for (int i = 0; i < MAX_ROWS * MAX_COLS; i++) {
-        video[i * 2]     = ' ';
-        video[i * 2 + 1] = WHITE_ON_BLACK;
-    }
+// ── Screen helpers ────────────────────────────────────────────────────────
+void clear_screen(void) {
+    volatile unsigned short *video = (volatile unsigned short *)VIDEO_MEMORY;
+    for (int i = 0; i < MAX_ROWS * MAX_COLS; i++)
+        video[i] = (unsigned short)((WHITE_ON_BLACK << 8) | ' ');
     cursor_row = 0;
     cursor_col = 0;
     update_cursor(0, 0);
 }
 
 void print_char(char c, int col, int row, char attr) {
-    char *video = (char *)VIDEO_MEMORY;
-    if (!attr) attr = WHITE_ON_BLACK;
+    volatile unsigned short *video = (volatile unsigned short *)VIDEO_MEMORY;
+    if (!attr) attr = (char)WHITE_ON_BLACK;
 
     if (c == '\n') {
         cursor_row++;
@@ -74,66 +72,58 @@ void print_char(char c, int col, int row, char attr) {
     } else if (c == '\b') {
         if (cursor_col > 0) {
             cursor_col--;
-            video[(cursor_row * MAX_COLS + cursor_col) * 2]     = ' ';
-            video[(cursor_row * MAX_COLS + cursor_col) * 2 + 1] = attr;
+            video[cursor_row * MAX_COLS + cursor_col] =
+                (unsigned short)((attr << 8) | ' ');
         }
     } else {
         if (col >= 0 && row >= 0) {
-            video[(row * MAX_COLS + col) * 2]     = c;
-            video[(row * MAX_COLS + col) * 2 + 1] = attr;
+            video[row * MAX_COLS + col] = (unsigned short)((attr << 8) | (unsigned char)c);
         } else {
-            video[(cursor_row * MAX_COLS + cursor_col) * 2]     = c;
-            video[(cursor_row * MAX_COLS + cursor_col) * 2 + 1] = attr;
+            video[cursor_row * MAX_COLS + cursor_col] =
+                (unsigned short)((attr << 8) | (unsigned char)c);
             cursor_col++;
         }
     }
 
-    if (cursor_col >= MAX_COLS) {
-        cursor_col = 0;
-        cursor_row++;
-    }
+    if (cursor_col >= MAX_COLS) { cursor_col = 0; cursor_row++; }
 
     if (cursor_row >= MAX_ROWS) {
-        for (int i = 0; i < (MAX_ROWS - 1) * MAX_COLS; i++) {
-            video[i * 2]     = video[(i + MAX_COLS) * 2];
-            video[i * 2 + 1] = video[(i + MAX_COLS) * 2 + 1];
-        }
-        for (int i = (MAX_ROWS - 1) * MAX_COLS; i < MAX_ROWS * MAX_COLS; i++) {
-            video[i * 2]     = ' ';
-            video[i * 2 + 1] = WHITE_ON_BLACK;
-        }
+        // Scroll up one line
+        for (int i = 0; i < (MAX_ROWS - 1) * MAX_COLS; i++)
+            video[i] = video[i + MAX_COLS];
+        for (int i = (MAX_ROWS - 1) * MAX_COLS; i < MAX_ROWS * MAX_COLS; i++)
+            video[i] = (unsigned short)((WHITE_ON_BLACK << 8) | ' ');
         cursor_row = MAX_ROWS - 1;
     }
     update_cursor(cursor_row, cursor_col);
 }
 
 void print_string(const char *str) {
-    for (int i = 0; str[i] != 0; i++)
-        print_char(str[i], -1, -1, WHITE_ON_BLACK);
+    for (int i = 0; str[i]; i++)
+        print_char(str[i], -1, -1, (char)WHITE_ON_BLACK);
 }
 
 void print_hex(unsigned int num) {
-    char hex_string[11];
-    hex_string[0] = '0';
-    hex_string[1] = 'x';
+    char buf[11];
+    buf[0] = '0'; buf[1] = 'x';
     for (int i = 0; i < 8; i++) {
-        unsigned char nibble = (num >> (28 - i * 4)) & 0xF;
-        hex_string[i + 2] = (nibble < 10) ? ('0' + nibble) : ('A' + nibble - 10);
+        unsigned char n = (unsigned char)((num >> (28 - i * 4)) & 0xF);
+        buf[i + 2] = (n < 10) ? ('0' + n) : ('A' + n - 10);
     }
-    hex_string[10] = 0;
-    print_string(hex_string);
+    buf[10] = '\0';
+    print_string(buf);
 }
 
 void print_dec(unsigned int num) {
-    if (num == 0) { print_char('0', -1, -1, WHITE_ON_BLACK); return; }
-    char buffer[12];
-    int i = 0;
-    while (num > 0) { buffer[i++] = '0' + (num % 10); num /= 10; }
+    if (num == 0) { print_char('0', -1, -1, (char)WHITE_ON_BLACK); return; }
+    char buf[12]; int i = 0;
+    while (num > 0) { buf[i++] = '0' + (int)(num % 10); num /= 10; }
     for (int j = i - 1; j >= 0; j--)
-        print_char(buffer[j], -1, -1, WHITE_ON_BLACK);
+        print_char(buf[j], -1, -1, (char)WHITE_ON_BLACK);
 }
 
-void kernel_main() {
+// ── Kernel entry point ────────────────────────────────────────────────────
+void kernel_main(void) {
     clear_screen();
     print_string("[BOOT] SUB OS v0.11.0 starting...\n");
 
@@ -147,11 +137,12 @@ void kernel_main() {
     tss_init();
     syscall_init();
     process_init();
+    scheduler_init();
     ata_init();
     fs_init();
     fs_mount();
 
-    // Hand off to interactive shell with GUI banner
+    // Hand control to the interactive shell with GUI banner
     shell_run();
 
     // Should never reach here

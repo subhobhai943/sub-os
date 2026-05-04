@@ -1,5 +1,8 @@
 [bits 32]
-[extern kernel_main]       ; Main C kernel function
+[section .text]
+[global _start]
+[extern kernel_main]
 
-call kernel_main           ; Call kernel main function
-jmp $                      ; Hang if kernel returns
+_start:
+    call kernel_main    ; Call C kernel entry
+    jmp  $              ; Hang if kernel returns
