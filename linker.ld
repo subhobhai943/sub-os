@@ -1,27 +1,27 @@
 /* SUB OS Linker Script */
 
-ENTRY(main)
+ENTRY(kernel_main)
 
 SECTIONS
 {
-    . = 0x1000; /* Kernel starts at 0x1000 */
-    
+    . = 0x1000; /* Kernel loaded at 0x1000 by bootloader */
+
     .text : {
         *(.text)
     }
-    
+
     .rodata : {
         *(.rodata)
     }
-    
+
     .data : {
         *(.data)
     }
-    
+
     .bss : {
+        *(COMMON)
         *(.bss)
     }
-    
-    /* Mark end of kernel */
+
     kernel_end = .;
 }
