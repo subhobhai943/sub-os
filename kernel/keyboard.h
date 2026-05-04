@@ -4,13 +4,8 @@
 #ifndef KEYBOARD_H
 #define KEYBOARD_H
 
-// Initialize keyboard driver
-void keyboard_init();
-
-// Keyboard IRQ handler
-void keyboard_handler();
-
-// Read character from keyboard buffer
-char keyboard_getchar();
+void keyboard_init(void);
+void keyboard_handler(void);
+char keyboard_getchar(void);
 
 #endif

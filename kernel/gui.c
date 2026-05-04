@@ -5,14 +5,13 @@
 #include "kernel.h"
 #include "timer.h"
 #include "apps.h"
+#include "keyboard.h"
 
 #define VGA_BASE 0xB8000
 #define COLS 80
 #define ROWS 25
 
-// ---------------------------------------------------------------------------
-// Primitives
-// ---------------------------------------------------------------------------
+// ── VGA primitives ───────────────────────────────────────────────────────────
 
 void gui_draw_char(int col, int row, char c, unsigned char color) {
     if (col < 0 || col >= COLS || row < 0 || row >= ROWS) return;
@@ -46,9 +45,7 @@ void gui_draw_box(int col, int row, int w, int h, unsigned char color) {
     }
 }
 
-// ---------------------------------------------------------------------------
-// Boot banner (shown on shell start)
-// ---------------------------------------------------------------------------
+// ── Boot banner ──────────────────────────────────────────────────────────────
 
 void gui_draw_banner(void) {
     unsigned short *vga = (unsigned short *)VGA_BASE;
@@ -56,13 +53,13 @@ void gui_draw_banner(void) {
     for (int i = 0; i < ROWS * COLS; i++)
         vga[i] = (unsigned short)((bg << 8) | ' ');
 
-    // title bar
+    // Title bar
     unsigned char tc = VGA_COLOR(VGA_WHITE, VGA_BLUE);
     gui_fill_rect(0, 0, COLS, 1, ' ', tc);
     gui_draw_string(1, 0,
         "SUB OS v0.11.0  |  x86 32-bit Kernel  |  (c) 2026 SUB OS Project", tc);
 
-    // welcome box
+    // Welcome box
     unsigned char bc = VGA_COLOR(VGA_LIGHT_CYAN, VGA_BLACK);
     gui_draw_box(10, 2, 60, 9, bc);
     gui_draw_string(12, 3, "Welcome to SUB OS!",
@@ -80,7 +77,7 @@ void gui_draw_banner(void) {
     gui_draw_string(12, 9, "Type 'halt'    to stop the system.",
         VGA_COLOR(VGA_LIGHT_RED, VGA_BLACK));
 
-    // status bar
+    // Status bar
     unsigned char sc = VGA_COLOR(VGA_BLACK, VGA_LIGHT_GREY);
     gui_fill_rect(0, 24, COLS, 1, ' ', sc);
     gui_draw_string(1, 24,
@@ -93,9 +90,7 @@ void gui_draw_banner(void) {
     cursor_col = 0;
 }
 
-// ---------------------------------------------------------------------------
-// Desktop / Window Manager
-// ---------------------------------------------------------------------------
+// ── Desktop icon table ───────────────────────────────────────────────────────
 
 typedef struct {
     int col, row;
@@ -117,66 +112,70 @@ static void desktop_draw(int sel) {
     unsigned char wall = VGA_COLOR(VGA_LIGHT_GREY, VGA_BLUE);
     gui_fill_rect(0, 1, COLS, 22, ' ', wall);
 
-    // ASCII logo (no escape sequences - plain chars only)
+    // ASCII art logo - only safe printable chars + double-backslash for backslash
     unsigned char logo_c = VGA_COLOR(VGA_WHITE, VGA_BLUE);
-    gui_draw_string(28,  9, "  ___  _   _ ____    ___  ____  ",  logo_c);
-    gui_draw_string(28, 10, " / __|| | | | __ )  / _ \\/ ___| ", logo_c);
-    gui_draw_string(28, 11, " \\__ \\| | | |  _ \\ | | | \\___ \\", logo_c);
-    gui_draw_string(28, 12, "  ___) | |_| | |_) || |_| |___) |",  logo_c);
+    gui_draw_string(28,  9, "  ___  _   _ ____    ___  ____  ", logo_c);
+    gui_draw_string(28, 10, " / __|| | | | __ )  / _ \\ ___| ", logo_c);
+    gui_draw_string(28, 11, " \\__ \\| | | |  _ \\| | | \\___ \\", logo_c);
+    gui_draw_string(28, 12, "  ___) | |_| | |_) || |_| |___) |", logo_c);
     gui_draw_string(28, 13, " |____/ \\___/|____/  \\___/|____/ ", logo_c);
     gui_draw_string(32, 15, "v0.11.0  |  x86 32-bit",
         VGA_COLOR(VGA_LIGHT_CYAN, VGA_BLUE));
 
-    // app icons
+    // App icons
     for (int i = 0; i < ICON_COUNT; i++) {
         int is_sel = (i == sel);
-        unsigned char ic = is_sel ?
-            VGA_COLOR(VGA_BLACK, VGA_YELLOW) : icons[i].icon_c;
-        gui_fill_rect(icons[i].col, icons[i].row, 12, 3, ' ',
-            is_sel ? VGA_COLOR(VGA_BLACK, VGA_YELLOW) : wall);
-        gui_draw_box(icons[i].col, icons[i].row, 12, 3,
-            is_sel ? VGA_COLOR(VGA_BLACK, VGA_YELLOW) : icons[i].icon_c);
-        gui_draw_string(icons[i].col + 4, icons[i].row + 1,
-            icons[i].icon, ic);
-        gui_draw_string(icons[i].col + 1, icons[i].row + 3,
-            icons[i].label,
+        unsigned char ic = is_sel
+            ? VGA_COLOR(VGA_BLACK, VGA_YELLOW)
+            : icons[i].icon_c;
+        unsigned char icon_wall = is_sel
+            ? VGA_COLOR(VGA_BLACK, VGA_YELLOW)
+            : wall;
+        unsigned char border_c = is_sel
+            ? VGA_COLOR(VGA_BLACK, VGA_YELLOW)
+            : icons[i].icon_c;
+
+        gui_fill_rect(icons[i].col, icons[i].row, 12, 3, ' ', icon_wall);
+        gui_draw_box(icons[i].col, icons[i].row, 12, 3, border_c);
+        gui_draw_string(icons[i].col + 4, icons[i].row + 1, icons[i].icon, ic);
+        gui_draw_string(icons[i].col + 1, icons[i].row + 3, icons[i].label,
             is_sel ? VGA_COLOR(VGA_YELLOW, VGA_BLUE)
                    : VGA_COLOR(VGA_WHITE,  VGA_BLUE));
     }
 }
 
 static void taskbar_draw(int sel) {
-    // top bar
+    // Top menu bar
     unsigned char tc = VGA_COLOR(VGA_WHITE, VGA_CYAN);
     gui_fill_rect(0, 0, COLS, 1, ' ', tc);
     gui_draw_string(1, 0, "SUB OS v0.11.0", tc);
 
-    // uptime
+    // Uptime display
     unsigned long up = get_uptime();
     char ubuf[24];
     int idx = 0;
     ubuf[idx++]='U'; ubuf[idx++]='p'; ubuf[idx++]=':'; ubuf[idx++]=' ';
-    unsigned int h = (unsigned int)(up / 3600);
-    unsigned int m = (unsigned int)((up % 3600) / 60);
-    unsigned int s = (unsigned int)(up % 60);
-    if (h > 9) ubuf[idx++] = '0' + h/10;
-    ubuf[idx++] = '0' + h%10; ubuf[idx++] = 'h'; ubuf[idx++] = ' ';
-    if (m > 9) ubuf[idx++] = '0' + m/10;
-    ubuf[idx++] = '0' + m%10; ubuf[idx++] = 'm'; ubuf[idx++] = ' ';
-    if (s > 9) ubuf[idx++] = '0' + s/10;
-    ubuf[idx++] = '0' + s%10; ubuf[idx++] = 's'; ubuf[idx] = '\0';
+    unsigned int hh = (unsigned int)(up / 3600);
+    unsigned int mm = (unsigned int)((up % 3600) / 60);
+    unsigned int ss = (unsigned int)(up % 60);
+    if (hh > 9) ubuf[idx++] = '0' + (int)(hh/10);
+    ubuf[idx++] = '0' + (int)(hh%10); ubuf[idx++]='h'; ubuf[idx++]=' ';
+    if (mm > 9) ubuf[idx++] = '0' + (int)(mm/10);
+    ubuf[idx++] = '0' + (int)(mm%10); ubuf[idx++]='m'; ubuf[idx++]=' ';
+    if (ss > 9) ubuf[idx++] = '0' + (int)(ss/10);
+    ubuf[idx++] = '0' + (int)(ss%10); ubuf[idx++]='s'; ubuf[idx]='\0';
     gui_draw_string(18, 0, ubuf, tc);
     gui_draw_string(40, 0, "A=Left  D=Right  Enter=Open  ESC=Shell", tc);
 
-    // bottom taskbar
-    unsigned char bc = VGA_COLOR(VGA_BLACK, VGA_LIGHT_GREY);
-    gui_fill_rect(0, 24, COLS, 1, ' ', bc);
+    // Bottom taskbar
+    unsigned char btc = VGA_COLOR(VGA_BLACK, VGA_LIGHT_GREY);
+    gui_fill_rect(0, 24, COLS, 1, ' ', btc);
     const char *app_names[] = {"Notepad","Calc","Files","SysMon","Term"};
     int bx = 1;
     for (int i = 0; i < ICON_COUNT; i++) {
-        unsigned char bc2 = (i == sel) ?
-            VGA_COLOR(VGA_BLACK, VGA_YELLOW) :
-            VGA_COLOR(VGA_BLACK, VGA_LIGHT_GREY);
+        unsigned char bc2 = (i == sel)
+            ? VGA_COLOR(VGA_BLACK, VGA_YELLOW)
+            : VGA_COLOR(VGA_BLACK, VGA_LIGHT_GREY);
         gui_draw_char(bx, 24, '[', bc2);
         int len = 0;
         for (; app_names[i][len]; len++)
@@ -196,13 +195,15 @@ void gui_draw_desktop(void) {
         asm volatile("hlt");
         if (!c) continue;
 
-        if (c == 27) break;   // ESC -> back to shell
+        if (c == 27) break;  // ESC -> back to shell
 
         if (c == 'a' || c == 'A') {
             if (sel > 0) { sel--; taskbar_draw(sel); desktop_draw(sel); }
+            continue;
         }
         if (c == 'd' || c == 'D') {
             if (sel < ICON_COUNT-1) { sel++; taskbar_draw(sel); desktop_draw(sel); }
+            continue;
         }
         if (c == '\n' || c == '\r' || c == ' ') {
             switch (sel) {
@@ -210,7 +211,7 @@ void gui_draw_desktop(void) {
                 case 1: app_calculator();  break;
                 case 2: app_filemanager(); break;
                 case 3: app_sysmon();      break;
-                case 4: return;  // Terminal -> back to shell
+                case 4: return;  // Terminal = back to shell
             }
             taskbar_draw(sel);
             desktop_draw(sel);
