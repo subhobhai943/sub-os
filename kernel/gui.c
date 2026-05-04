@@ -1,13 +1,16 @@
-// SUB OS - GUI / TUI Implementation (VGA Text Mode)
+// SUB OS - GUI / TUI + Window Manager
 // Copyright (c) 2025-2026 SUB OS Project
 
 #include "gui.h"
 #include "kernel.h"
 #include "timer.h"
+#include "apps.h"
 
 #define VGA_BASE 0xB8000
 #define COLS 80
 #define ROWS 25
+
+// ── primitives ──────────────────────────────────────────────────────────────
 
 void gui_draw_char(int col, int row, char c, unsigned char color) {
     if (col < 0 || col >= COLS || row < 0 || row >= ROWS) return;
@@ -27,112 +30,199 @@ void gui_fill_rect(int col, int row, int w, int h, char c, unsigned char color) 
 }
 
 void gui_draw_box(int col, int row, int w, int h, unsigned char color) {
-    gui_draw_char(col, row, '+', color);
-    for (int i = 1; i < w - 1; i++) gui_draw_char(col + i, row, '-', color);
-    gui_draw_char(col + w - 1, row, '+', color);
-    gui_draw_char(col, row + h - 1, '+', color);
-    for (int i = 1; i < w - 1; i++) gui_draw_char(col + i, row + h - 1, '-', color);
-    gui_draw_char(col + w - 1, row + h - 1, '+', color);
-    for (int r = 1; r < h - 1; r++) {
-        gui_draw_char(col, row + r, '|', color);
-        gui_draw_char(col + w - 1, row + r, '|', color);
+    gui_draw_char(col,       row,       '+', color);
+    gui_draw_char(col+w-1,   row,       '+', color);
+    gui_draw_char(col,       row+h-1,   '+', color);
+    gui_draw_char(col+w-1,   row+h-1,   '+', color);
+    for (int i = 1; i < w-1; i++) {
+        gui_draw_char(col+i, row,     '-', color);
+        gui_draw_char(col+i, row+h-1, '-', color);
+    }
+    for (int r = 1; r < h-1; r++) {
+        gui_draw_char(col,     row+r, '|', color);
+        gui_draw_char(col+w-1, row+r, '|', color);
     }
 }
 
-void gui_draw_banner() {
+// ── boot banner ─────────────────────────────────────────────────────────────
+
+void gui_draw_banner(void) {
     unsigned short *vga = (unsigned short *)VGA_BASE;
     unsigned char bg = VGA_COLOR(VGA_LIGHT_GREY, VGA_BLACK);
     for (int i = 0; i < ROWS * COLS; i++)
         vga[i] = (unsigned short)((bg << 8) | ' ');
 
-    unsigned char title_color = VGA_COLOR(VGA_WHITE, VGA_BLUE);
-    gui_fill_rect(0, 0, COLS, 1, ' ', title_color);
+    // title bar
+    unsigned char tc = VGA_COLOR(VGA_WHITE, VGA_BLUE);
+    gui_fill_rect(0, 0, COLS, 1, ' ', tc);
     gui_draw_string(1, 0,
-        "SUB OS v0.11.0  |  x86 32-bit Kernel  |  (c) 2026 SUB OS Project",
-        title_color);
+        "SUB OS v0.11.0  |  x86 32-bit Kernel  |  (c) 2026 SUB OS Project", tc);
 
-    unsigned char status_color = VGA_COLOR(VGA_BLACK, VGA_LIGHT_GREY);
-    gui_fill_rect(0, 24, COLS, 1, ' ', status_color);
-    gui_draw_string(1, 24, "[ help ] [ uptime ] [ meminfo ] [ gui ] [ halt ]", status_color);
-
-    gui_fill_rect(0, 1, COLS, 23, ' ', bg);
-
-    unsigned char box_color = VGA_COLOR(VGA_LIGHT_CYAN, VGA_BLACK);
-    gui_draw_box(10, 2, 60, 8, box_color);
-    gui_draw_string(12, 3, "Welcome to SUB OS!", VGA_COLOR(VGA_WHITE, VGA_BLACK));
-    gui_draw_string(12, 4, "A lightweight 32-bit x86 operating system.", VGA_COLOR(VGA_LIGHT_GREY, VGA_BLACK));
-    gui_draw_string(12, 5, "Type 'help' for available commands.", VGA_COLOR(VGA_LIGHT_GREEN, VGA_BLACK));
-    gui_draw_string(12, 6, "Type 'gui'  to see the desktop demo.", VGA_COLOR(VGA_YELLOW, VGA_BLACK));
-    gui_draw_string(12, 7, "Type 'halt' to stop the system.", VGA_COLOR(VGA_LIGHT_RED, VGA_BLACK));
-    gui_draw_string(12, 8, "Test with: qemu-system-x86_64 -drive format=raw,file=build/sub_os.bin",
+    // welcome box
+    unsigned char bc = VGA_COLOR(VGA_LIGHT_CYAN, VGA_BLACK);
+    gui_draw_box(10, 2, 60, 9, bc);
+    gui_draw_string(12, 3, "Welcome to SUB OS!",
+        VGA_COLOR(VGA_WHITE, VGA_BLACK));
+    gui_draw_string(12, 4, "A lightweight 32-bit x86 operating system.",
+        VGA_COLOR(VGA_LIGHT_GREY, VGA_BLACK));
+    gui_draw_string(12, 5, "Type 'help'    for a list of commands.",
+        VGA_COLOR(VGA_LIGHT_GREEN, VGA_BLACK));
+    gui_draw_string(12, 6, "Type 'desktop' to open the full desktop.",
+        VGA_COLOR(VGA_YELLOW, VGA_BLACK));
+    gui_draw_string(12, 7, "Type 'notepad' to open the text editor.",
+        VGA_COLOR(VGA_LIGHT_CYAN, VGA_BLACK));
+    gui_draw_string(12, 8, "Type 'calc'    to open the calculator.",
         VGA_COLOR(VGA_LIGHT_MAGENTA, VGA_BLACK));
+    gui_draw_string(12, 9, "Type 'halt'    to stop the system.",
+        VGA_COLOR(VGA_LIGHT_RED, VGA_BLACK));
+
+    // status bar
+    unsigned char sc = VGA_COLOR(VGA_BLACK, VGA_LIGHT_GREY);
+    gui_fill_rect(0, 24, COLS, 1, ' ', sc);
+    gui_draw_string(1, 24,
+        "[ help ] [ notepad ] [ calc ] [ files ] [ sysmon ] [ desktop ] [ halt ]", sc);
 
     extern int cursor_row;
     extern int cursor_col;
-    cursor_row = 11;
+    cursor_row = 12;
     cursor_col = 0;
 }
 
-void gui_draw_desktop() {
-    unsigned short *vga = (unsigned short *)VGA_BASE;
-    unsigned char desktop_bg = VGA_COLOR(VGA_LIGHT_GREY, VGA_BLUE);
-    for (int i = 0; i < ROWS * COLS; i++)
-        vga[i] = (unsigned short)((desktop_bg << 8) | ' ');
+// ── desktop icon list ────────────────────────────────────────────────────────
 
-    unsigned char title = VGA_COLOR(VGA_WHITE, VGA_CYAN);
-    gui_fill_rect(0, 0, COLS, 1, ' ', title);
-    gui_draw_string(1, 0, "SUB OS Desktop  |  Taskbar", title);
-    gui_draw_string(70, 0, "[ v0.11 ]", title);
+typedef struct {
+    int col, row;
+    const char *icon;   // 3-char icon
+    const char *label;
+    unsigned char icon_c;
+} desktop_icon_t;
 
-    unsigned char w1 = VGA_COLOR(VGA_WHITE, VGA_BLACK);
-    unsigned char w1t = VGA_COLOR(VGA_BLACK, VGA_LIGHT_BLUE);
-    gui_fill_rect(2, 2, 36, 12, ' ', w1);
-    gui_draw_box(2, 2, 36, 12, VGA_COLOR(VGA_LIGHT_CYAN, VGA_BLACK));
-    gui_fill_rect(3, 2, 34, 1, ' ', w1t);
-    gui_draw_string(3, 2, "[x]  File Manager", w1t);
-    gui_draw_string(4, 3, "Name              Size    Type", VGA_COLOR(VGA_YELLOW, VGA_BLACK));
-    gui_draw_string(4, 4, "----------------------------", VGA_COLOR(VGA_DARK_GREY, VGA_BLACK));
-    gui_draw_string(4, 5, "/                   DIR", w1);
-    gui_draw_string(4, 6, "kernel.bin    124 KB   BIN", w1);
-    gui_draw_string(4, 7, "boot.bin        512 B   BIN", w1);
-    gui_draw_string(4, 8, "README.txt       2 KB   TXT", w1);
-    gui_draw_string(4, 10, "(VFS - empty)", VGA_COLOR(VGA_DARK_GREY, VGA_BLACK));
+static desktop_icon_t icons[] = {
+    {  5, 6, "[N]", "Notepad",      VGA_COLOR(VGA_WHITE,  VGA_BLUE)   },
+    { 20, 6, "[C]", "Calculator",   VGA_COLOR(VGA_WHITE,  VGA_MAGENTA)},
+    { 35, 6, "[F]", "File Manager", VGA_COLOR(VGA_WHITE,  VGA_CYAN)   },
+    { 50, 6, "[M]", "Sys Monitor",  VGA_COLOR(VGA_WHITE,  VGA_GREEN)  },
+    { 65, 6, "[T]", "Terminal",     VGA_COLOR(VGA_WHITE,  VGA_RED)    },
+};
+#define ICON_COUNT 5
 
-    unsigned char w2 = VGA_COLOR(VGA_WHITE, VGA_BLACK);
-    unsigned char w2t = VGA_COLOR(VGA_BLACK, VGA_GREEN);
-    gui_fill_rect(42, 2, 36, 10, ' ', w2);
-    gui_draw_box(42, 2, 36, 10, VGA_COLOR(VGA_LIGHT_GREEN, VGA_BLACK));
-    gui_fill_rect(43, 2, 34, 1, ' ', w2t);
-    gui_draw_string(43, 2, "[x]  System Info", w2t);
-    gui_draw_string(44, 3, "OS:     SUB OS v0.11.0", w2);
-    gui_draw_string(44, 4, "Arch:   x86 32-bit", w2);
-    gui_draw_string(44, 5, "Memory: 16 MB (detected)", w2);
-    gui_draw_string(44, 6, "CPU:    QEMU/KVM x86", w2);
-    gui_draw_string(44, 7, "Shell:  SUBsh v1.0", w2);
-    gui_draw_string(44, 8, "FS:     SubFS (VFS)", w2);
-    gui_draw_string(44, 9, "Boot:   BIOS/MBR", w2);
+static void desktop_draw(int sel) {
+    // wallpaper
+    unsigned char wall = VGA_COLOR(VGA_LIGHT_GREY, VGA_BLUE);
+    gui_fill_rect(0, 1, COLS, 22, ' ', wall);
 
-    unsigned char w3t = VGA_COLOR(VGA_BLACK, VGA_MAGENTA);
-    gui_fill_rect(42, 14, 36, 8, ' ', VGA_COLOR(VGA_WHITE, VGA_BLACK));
-    gui_draw_box(42, 14, 36, 8, VGA_COLOR(VGA_LIGHT_MAGENTA, VGA_BLACK));
-    gui_fill_rect(43, 14, 34, 1, ' ', w3t);
-    gui_draw_string(43, 14, "[x]  Terminal", w3t);
-    gui_draw_string(44, 15, "subos@kernel:/ $ help", VGA_COLOR(VGA_LIGHT_GREEN, VGA_BLACK));
-    gui_draw_string(44, 16, "  help, clear, echo,", VGA_COLOR(VGA_LIGHT_GREY, VGA_BLACK));
-    gui_draw_string(44, 17, "  version, uptime,", VGA_COLOR(VGA_LIGHT_GREY, VGA_BLACK));
-    gui_draw_string(44, 18, "  meminfo, ls, cat,", VGA_COLOR(VGA_LIGHT_GREY, VGA_BLACK));
-    gui_draw_string(44, 19, "  gui, reboot, halt", VGA_COLOR(VGA_LIGHT_GREY, VGA_BLACK));
+    // SUB OS logo in center
+    unsigned char logo_c = VGA_COLOR(VGA_WHITE, VGA_BLUE);
+    gui_draw_string(28,  9, "  ___  _   _ ____    ___  ____  ", logo_c);
+    gui_draw_string(28, 10, " / __|| | | | __ )  / _ \\/ ___| ", logo_c);
+    gui_draw_string(28, 11, " \\__ \\| | | |  _ \ | | | \\___ \\ ", logo_c);
+    gui_draw_string(28, 12, "  ___) | |_| | |_) || |_| |___) |", logo_c);
+    gui_draw_string(28, 13, " |____/ \\___/|____/  \\___/|____/ ", logo_c);
+    gui_draw_string(32, 15, "v0.11.0  |  x86 32-bit", VGA_COLOR(VGA_LIGHT_CYAN, VGA_BLUE));
 
-    unsigned char tb = VGA_COLOR(VGA_BLACK, VGA_LIGHT_GREY);
-    gui_fill_rect(0, 23, COLS, 1, ' ', tb);
-    gui_draw_string(1, 23, "[ Start ]  [File Manager]  [Sys Info]  [Terminal]", tb);
-    gui_draw_string(60, 23, "SUB OS 0.11", tb);
+    // Icons row
+    for (int i = 0; i < ICON_COUNT; i++) {
+        unsigned char ic = (i == sel) ?
+            VGA_COLOR(VGA_BLACK, VGA_YELLOW) : icons[i].icon_c;
+        gui_fill_rect(icons[i].col, icons[i].row, 12, 3, ' ',
+            (i == sel) ? VGA_COLOR(VGA_BLACK, VGA_YELLOW) : wall);
+        gui_draw_box(icons[i].col, icons[i].row, 12, 3,
+            (i == sel) ? VGA_COLOR(VGA_BLACK, VGA_YELLOW) : icons[i].icon_c);
+        gui_draw_string(icons[i].col + 4, icons[i].row + 1,
+            icons[i].icon, ic);
+        gui_draw_string(icons[i].col + 1, icons[i].row + 3,
+            icons[i].label,
+            (i == sel) ? VGA_COLOR(VGA_YELLOW, VGA_BLUE)
+                       : VGA_COLOR(VGA_WHITE, VGA_BLUE));
+    }
+}
 
-    gui_draw_string(0, 24, "  Press Enter or type any command to return to shell  ",
-        VGA_COLOR(VGA_YELLOW, VGA_BLACK));
+static void taskbar_draw(int sel) {
+    unsigned char tc = VGA_COLOR(VGA_WHITE, VGA_CYAN);
+    gui_fill_rect(0, 0, COLS, 1, ' ', tc);
+    gui_draw_string(1, 0, "SUB OS v0.11.0", tc);
 
-    extern int cursor_row;
-    extern int cursor_col;
-    cursor_row = 24;
-    cursor_col = 0;
+    // uptime
+    unsigned long up = get_uptime();
+    char ubuf[20];
+    // simple format: "Up: Xh Ym Zs"
+    ubuf[0]='U';ubuf[1]='p';ubuf[2]=':';ubuf[3]=' ';
+    int idx=4;
+    unsigned int h=(unsigned int)(up/3600);
+    unsigned int m=(unsigned int)((up%3600)/60);
+    unsigned int s=(unsigned int)(up%60);
+    if(h>9){ubuf[idx++]='0'+h/10;}ubuf[idx++]='0'+h%10;
+    ubuf[idx++]='h';ubuf[idx++]=' ';
+    if(m>9){ubuf[idx++]='0'+m/10;}ubuf[idx++]='0'+m%10;
+    ubuf[idx++]='m';ubuf[idx++]=' ';
+    if(s>9){ubuf[idx++]='0'+s/10;}ubuf[idx++]='0'+s%10;
+    ubuf[idx++]='s';ubuf[idx]='\0';
+    gui_draw_string(18, 0, ubuf, tc);
+
+    gui_draw_string(40, 0,
+        "A=Left D=Right Enter=Open ESC=Shell", tc);
+
+    // bottom taskbar
+    unsigned char bc = VGA_COLOR(VGA_BLACK, VGA_LIGHT_GREY);
+    gui_fill_rect(0, 24, COLS, 1, ' ', bc);
+    const char *app_names[] = {"Notepad","Calc","Files","SysMon","Term"};
+    int bx = 1;
+    for (int i = 0; i < ICON_COUNT; i++) {
+        unsigned char bc2 = (i == sel) ?
+            VGA_COLOR(VGA_BLACK, VGA_YELLOW) :
+            VGA_COLOR(VGA_BLACK, VGA_LIGHT_GREY);
+        gui_draw_char(bx, 24, '[', bc2);
+        for (int j = 0; app_names[i][j]; j++)
+            gui_draw_char(bx+1+j, 24, app_names[i][j], bc2);
+        // find length
+        int len=0; while(app_names[i][len]) len++;
+        gui_draw_char(bx+1+len, 24, ']', bc2);
+        bx += len + 3;
+    }
+}
+
+void gui_draw_desktop(void) {
+    int sel = 0;
+    taskbar_draw(sel);
+    desktop_draw(sel);
+
+    while (1) {
+        char c = keyboard_getchar();
+        asm volatile("hlt");
+
+        if (!c) continue;
+
+        if (c == 27) break; // ESC → back to shell
+
+        if (c == 'a' || c == 'A') {
+            if (sel > 0) sel--;
+            taskbar_draw(sel);
+            desktop_draw(sel);
+        }
+        if (c == 'd' || c == 'D') {
+            if (sel < ICON_COUNT - 1) sel++;
+            taskbar_draw(sel);
+            desktop_draw(sel);
+        }
+        if (c == '\n' || c == '\r' || c == ' ') {
+            // launch selected app
+            switch (sel) {
+                case 0: app_notepad();     break;
+                case 1: app_calculator();  break;
+                case 2: app_filemanager(); break;
+                case 3: app_sysmon();      break;
+                case 4:
+                    // Terminal: just return to shell
+                    return;
+            }
+            // redraw desktop after app exits
+            taskbar_draw(sel);
+            desktop_draw(sel);
+        }
+    }
+}
+
+// Window manager entry (alias of desktop)
+void gui_wm_run(void) {
+    gui_draw_desktop();
 }

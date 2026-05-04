@@ -24,11 +24,17 @@
 
 #define VGA_COLOR(fg, bg) ((bg << 4) | fg)
 
+// Primitives
 void gui_draw_char(int col, int row, char c, unsigned char color);
 void gui_draw_string(int col, int row, const char *s, unsigned char color);
 void gui_fill_rect(int col, int row, int w, int h, char c, unsigned char color);
 void gui_draw_box(int col, int row, int w, int h, unsigned char color);
-void gui_draw_banner();
-void gui_draw_desktop();
+
+// Screens
+void gui_draw_banner(void);
+void gui_draw_desktop(void);
+
+// Window manager
+void gui_wm_run(void);
 
 #endif

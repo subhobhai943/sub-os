@@ -6,7 +6,7 @@ LD  = ld
 
 ASM_FLAGS = -f elf32
 CC_FLAGS  = -m32 -c -ffreestanding -fno-pie -O2 -Wall -Wextra \
-            -Wno-unused-parameter -Wno-unused-function
+            -Wno-unused-parameter -Wno-unused-function -Wno-unused-variable
 LD_FLAGS  = -m elf_i386 -T linker.ld
 
 BOOT_DIR   = boot
@@ -32,6 +32,7 @@ KERNEL_ASM_SRC = $(KERNEL_DIR)/kernel_entry.asm \
 
 KERNEL_C_SRC = $(KERNEL_DIR)/kernel.c \
                $(KERNEL_DIR)/gui.c \
+               $(KERNEL_DIR)/apps.c \
                $(KERNEL_DIR)/shell.c \
                $(KERNEL_DIR)/idt.c \
                $(KERNEL_DIR)/timer.c \
@@ -53,10 +54,10 @@ PRINT_ASM_SRC = boot/print_string_pm.asm \
                 boot/memory_detect.asm \
                 boot/switch_to_pm.asm
 
-PRINT_ASM_OBJ = $(patsubst boot/%.asm, $(BUILD_DIR)/%.o, $(PRINT_ASM_SRC))
+PRINT_ASM_OBJ  = $(patsubst boot/%.asm,        $(BUILD_DIR)/%.o, $(PRINT_ASM_SRC))
 KERNEL_ASM_OBJ = $(patsubst $(KERNEL_DIR)/%.asm, $(BUILD_DIR)/%.o, $(KERNEL_ASM_SRC))
 KERNEL_C_OBJ   = $(patsubst $(KERNEL_DIR)/%.c,   $(BUILD_DIR)/%.o, $(KERNEL_C_SRC))
-KERNEL_OBJ = $(KERNEL_ASM_OBJ) $(KERNEL_C_OBJ) $(PRINT_ASM_OBJ)
+KERNEL_OBJ     = $(KERNEL_ASM_OBJ) $(KERNEL_C_OBJ) $(PRINT_ASM_OBJ)
 
 .PHONY: all clean run run-iso iso
 
@@ -107,7 +108,7 @@ run-iso: $(OS_ISO)
 	    -display curses 2>/dev/null || \
 	qemu-system-x86_64 -cdrom $(OS_ISO) -m 32M
 
-# Legacy: run with qemu-system-i386
+# Legacy i386
 run-i386: $(OS_IMAGE)
 	qemu-system-i386 -drive format=raw,file=$(OS_IMAGE) -m 32M
 

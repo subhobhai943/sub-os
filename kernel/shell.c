@@ -7,6 +7,7 @@
 #include "timer.h"
 #include "pmm.h"
 #include "gui.h"
+#include "apps.h"
 
 #define COLOR_DEFAULT   0x0F
 #define COLOR_GREEN     0x0A
@@ -48,7 +49,7 @@ static const char *skip_word_space(const char *s) {
 
 static void cmd_help(void) {
     print_colored("\n SUB OS Shell Commands (SUBsh):\n", COLOR_CYAN);
-    print_colored("---------------------------------\n", COLOR_YELLOW);
+    print_colored("-----------------------------------------\n", COLOR_YELLOW);
     print_colored("  help          ", COLOR_GREEN); print_colored("- Show this help\n", COLOR_DEFAULT);
     print_colored("  clear         ", COLOR_GREEN); print_colored("- Clear screen\n", COLOR_DEFAULT);
     print_colored("  echo [text]   ", COLOR_GREEN); print_colored("- Print text\n", COLOR_DEFAULT);
@@ -57,16 +58,21 @@ static void cmd_help(void) {
     print_colored("  meminfo       ", COLOR_GREEN); print_colored("- Show memory info\n", COLOR_DEFAULT);
     print_colored("  ls            ", COLOR_GREEN); print_colored("- List files (VFS)\n", COLOR_DEFAULT);
     print_colored("  cat [file]    ", COLOR_GREEN); print_colored("- Read a file\n", COLOR_DEFAULT);
-    print_colored("  gui           ", COLOR_GREEN); print_colored("- Show GUI desktop demo\n", COLOR_DEFAULT);
+    print_colored("  desktop       ", COLOR_CYAN);  print_colored("- Open graphical desktop\n", COLOR_DEFAULT);
+    print_colored("  notepad       ", COLOR_CYAN);  print_colored("- Open text editor\n", COLOR_DEFAULT);
+    print_colored("  calc          ", COLOR_CYAN);  print_colored("- Open calculator\n", COLOR_DEFAULT);
+    print_colored("  files         ", COLOR_CYAN);  print_colored("- Open file manager\n", COLOR_DEFAULT);
+    print_colored("  sysmon        ", COLOR_CYAN);  print_colored("- Open system monitor\n", COLOR_DEFAULT);
     print_colored("  reboot        ", COLOR_GREEN); print_colored("- Reboot the system\n", COLOR_DEFAULT);
     print_colored("  halt          ", COLOR_GREEN); print_colored("- Halt the system\n", COLOR_DEFAULT);
-    print_colored("---------------------------------\n", COLOR_YELLOW);
+    print_colored("-----------------------------------------\n", COLOR_YELLOW);
 }
 
 static void cmd_version(void) {
     print_colored("\n  SUB OS v0.11.0\n", COLOR_CYAN);
     print_colored("  Arch: x86 (32-bit Protected Mode)\n", COLOR_DEFAULT);
-    print_colored("  Kernel: Monolithic  Shell: SUBsh v1.0\n\n", COLOR_DEFAULT);
+    print_colored("  Kernel: Monolithic  Shell: SUBsh v1.0\n", COLOR_DEFAULT);
+    print_colored("  Apps: Notepad, Calculator, File Manager, Sys Monitor\n\n", COLOR_DEFAULT);
 }
 
 static void cmd_uptime(void) {
@@ -78,12 +84,12 @@ static void cmd_uptime(void) {
 }
 
 static void cmd_meminfo(void) {
-    unsigned int total = pmm_get_total_memory() / 1024;
-    unsigned int used  = pmm_get_used_memory()  / 1024;
+    unsigned int total    = pmm_get_total_memory() / 1024;
+    unsigned int used     = pmm_get_used_memory()  / 1024;
     unsigned int free_mem = pmm_get_free_memory()  / 1024;
     print_colored("\n  Memory Information:\n", COLOR_CYAN);
-    print_colored("  Total: ", COLOR_GREEN); print_dec(total); print_string(" KB\n");
-    print_colored("  Used:  ", COLOR_YELLOW); print_dec(used);  print_string(" KB\n");
+    print_colored("  Total: ", COLOR_GREEN);  print_dec(total);    print_string(" KB\n");
+    print_colored("  Used:  ", COLOR_YELLOW); print_dec(used);     print_string(" KB\n");
     print_colored("  Free:  ", COLOR_GREEN);  print_dec(free_mem); print_string(" KB\n\n");
 }
 
@@ -109,20 +115,24 @@ void shell_execute(const char *cmd) {
     if (history_count < SHELL_HISTORY_SIZE)
         str_copy(history[history_count++], cmd);
 
-    if (str_eq(cmd, "help"))           cmd_help();
-    else if (str_eq(cmd, "clear"))     clear_screen();
-    else if (str_eq(cmd, "version"))   cmd_version();
-    else if (str_eq(cmd, "uptime"))    cmd_uptime();
-    else if (str_eq(cmd, "meminfo"))   cmd_meminfo();
-    else if (str_eq(cmd, "ls"))        cmd_ls();
-    else if (str_eq(cmd, "gui"))       gui_draw_desktop();
+    if      (str_eq(cmd, "help"))     cmd_help();
+    else if (str_eq(cmd, "clear"))    { clear_screen(); return; }
+    else if (str_eq(cmd, "version"))  cmd_version();
+    else if (str_eq(cmd, "uptime"))   cmd_uptime();
+    else if (str_eq(cmd, "meminfo"))  cmd_meminfo();
+    else if (str_eq(cmd, "ls"))       cmd_ls();
+    else if (str_eq(cmd, "desktop"))  gui_draw_desktop();
+    else if (str_eq(cmd, "notepad"))  { app_notepad();     gui_draw_banner(); }
+    else if (str_eq(cmd, "calc"))     { app_calculator();  gui_draw_banner(); }
+    else if (str_eq(cmd, "files"))    { app_filemanager(); gui_draw_banner(); }
+    else if (str_eq(cmd, "sysmon"))   { app_sysmon();      gui_draw_banner(); }
     else if (str_eq(cmd, "reboot")) {
         print_colored("\n  Rebooting...\n", COLOR_YELLOW);
         outb(0x64, 0xFE);
         asm volatile("hlt");
     }
     else if (str_eq(cmd, "halt")) {
-        print_colored("\n  System halted.\n", COLOR_YELLOW);
+        print_colored("\n  System halted. Power off safely.\n", COLOR_YELLOW);
         asm volatile("cli; hlt");
     }
     else if (str_starts(cmd, "echo ")) {
@@ -130,8 +140,7 @@ void shell_execute(const char *cmd) {
         print_string("  "); print_string(arg); print_string("\n");
     }
     else if (str_starts(cmd, "cat ")) {
-        const char *arg = skip_word_space(cmd);
-        cmd_cat(arg);
+        cmd_cat(skip_word_space(cmd));
     }
     else {
         print_colored("  ", COLOR_DEFAULT);
@@ -161,7 +170,7 @@ void shell_process_char(char c) {
             cmd_len--;
             cmd_buf[cmd_len] = '\0';
         }
-    } else {
+    } else if (c >= 32 && c < 127) {
         if (cmd_len < SHELL_MAX_CMD - 1) {
             cmd_buf[cmd_len++] = c;
             cmd_buf[cmd_len]   = '\0';
